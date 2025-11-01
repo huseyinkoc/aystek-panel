@@ -1,0 +1,3144 @@
+basePath: /
+definitions:
+  models.ActivityLog:
+    properties:
+      action:
+        description: 'Eylem türü (örnek: create, update, delete)'
+        type: string
+      details:
+        description: Ek detaylar
+        type: string
+      id:
+        type: string
+      module:
+        description: 'Modül adı (örnek: posts, comments)'
+        type: string
+      timestamp:
+        description: Zaman damgası
+        type: string
+      user_id:
+        description: Aktiviteyi gerçekleştiren kullanıcı
+        type: string
+      username:
+        description: Kullanıcı adı
+        type: string
+    type: object
+  models.ApplicationSettings:
+    properties:
+      analytics_code:
+        description: Google Analytics kodu
+        type: string
+      contact_info:
+        additionalProperties:
+          type: string
+        description: İletişim bilgileri (telefon, e-posta vb.)
+        type: object
+      default_lang:
+        description: Varsayılan dil
+        type: string
+      description:
+        additionalProperties:
+          type: string
+        description: Çok dilli açıklama
+        type: object
+      favicon_url:
+        description: Favicon URL'si
+        type: string
+      id:
+        type: string
+      logo_url:
+        description: Logo URL'si
+        type: string
+      maintenance_mode:
+        type: boolean
+      maintenance_msg:
+        additionalProperties:
+          type: string
+        description: Çok dilli bakım modu mesajı
+        type: object
+      meta_tags:
+        additionalProperties:
+          $ref: '#/definitions/models.MetaTag'
+        description: SEO meta bilgileri
+        type: object
+      social_media:
+        additionalProperties:
+          $ref: '#/definitions/models.SocialMedia'
+        description: SocialMedia     map[string]string  `bson:"social_media" json:"social_media"`
+          // Sosyal medya bağlantıları
+        type: object
+      supported_langs:
+        description: Desteklenen diller
+        items:
+          type: string
+        type: array
+      title:
+        additionalProperties:
+          type: string
+        description: Çok dilli başlık
+        type: object
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+    type: object
+  models.Category:
+    type: object
+  models.Comment:
+    properties:
+      content:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      likes:
+        type: integer
+      parent_id:
+        type: string
+      post_id:
+        type: string
+      reactions:
+        additionalProperties:
+          type: integer
+        description: Reaksiyonlar (emoji ifadesi ve sayısı)
+        type: object
+      replies:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.ContactMessage:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+      resolved_by:
+        type: string
+      status:
+        description: '"new", "in_progress", "resolved"'
+        type: string
+      subject:
+        type: string
+      updated_at:
+        type: string
+    required:
+    - email
+    - message
+    - name
+    type: object
+  models.Language:
+    type: object
+  models.LocalizedContent:
+    type: object
+  models.LocalizedField:
+    properties:
+      content:
+        type: string
+      slug:
+        type: string
+      title:
+        type: string
+    type: object
+  models.MaintenanceToggleMode:
+    properties:
+      enable:
+        type: boolean
+      message:
+        additionalProperties:
+          type: string
+        type: object
+    type: object
+  models.Media:
+    properties:
+      file_name:
+        type: string
+      file_path:
+        type: string
+      file_size:
+        example: 102400
+        type: integer
+      file_type:
+        type: string
+      id:
+        type: string
+      uploaded_at:
+        type: integer
+      uploaded_by:
+        example: admin
+        type: string
+    type: object
+  models.Menu:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      id:
+        type: string
+      order:
+        type: integer
+      parent_id:
+        type: string
+      roles:
+        description: '"admin", "editor", "user", "all"'
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+      type:
+        description: '"frontend" veya "backend"'
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      url:
+        type: string
+      visible:
+        type: boolean
+    required:
+    - title
+    - type
+    type: object
+  models.MetaTag:
+    properties:
+      description:
+        type: string
+      keywords:
+        description: Dizi olarak tanımlandı
+        items:
+          type: string
+        type: array
+      title:
+        type: string
+    type: object
+  models.Notification:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      is_read:
+        type: boolean
+      message:
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.Page:
+    type: object
+  models.Plugin:
+    type: object
+  models.Post:
+    properties:
+      author_id:
+        type: string
+      category_ids:
+        items:
+          type: string
+        type: array
+      created_at:
+        type: string
+      created_by:
+        type: string
+      id:
+        type: string
+      localizations:
+        additionalProperties:
+          $ref: '#/definitions/models.LocalizedField'
+        description: Dil koduna göre içerik
+        type: object
+      meta_tags:
+        additionalProperties:
+          $ref: '#/definitions/models.MetaTag'
+        description: Dil kodu ve SEO bilgileri
+        type: object
+      publish_date:
+        description: Yayınlanma tarihi
+        type: string
+      status:
+        description: draft, published, scheduled
+        type: string
+      tag_ids:
+        items:
+          type: string
+        type: array
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+    type: object
+  models.PreferredLanguageRequest:
+    properties:
+      language_code:
+        example: en
+        type: string
+    required:
+    - language_code
+    type: object
+  models.RequestPasswordReset:
+    properties:
+      email:
+        example: abc@mail.com
+        type: string
+    type: object
+  models.ResetPasswordRequest:
+    properties:
+      new_password:
+        example: newpassword123
+        type: string
+    type: object
+  models.Role:
+    properties:
+      created_at:
+        description: Oluşturulma tarihi
+        type: string
+      created_by:
+        description: Rolü oluşturan kullanıcı
+        type: string
+      id:
+        description: 'Rol ID''si (örn: "admin")'
+        type: string
+      permissions:
+        additionalProperties:
+          items:
+            type: string
+          type: array
+        description: Modül bazlı izinler
+        type: object
+      updated_at:
+        description: Güncellenme tarihi
+        type: string
+      updated_by:
+        description: Rolü güncelleyen son kullanıcı
+        type: string
+    type: object
+  models.Slider:
+    type: object
+  models.SocialMedia:
+    properties:
+      active:
+        description: Aktif mi?
+        type: boolean
+      name:
+        description: 'Örnek: Facebook, Twitter'
+        example: Facebook
+        type: string
+      'url example:':
+        description: 'Örnek: https://facebook.com/yourpage'
+        type: string
+    type: object
+  models.Tag:
+    properties:
+      created_at:
+        type: integer
+      id:
+        type: string
+      name:
+        type: string
+    required:
+    - name
+    type: object
+  models.User:
+    properties:
+      email:
+        type: string
+      full_name:
+        description: Otomatik oluşturulan tam ad
+        type: string
+      id:
+        type: string
+      name:
+        description: Kullanıcının adı
+        type: string
+      password:
+        type: string
+      phone_number:
+        type: string
+      preferred_language:
+        description: Kullanıcı tercihi
+        type: string
+      roles:
+        description: '["admin", "editor", "user"]'
+        items:
+          type: string
+        type: array
+      surname:
+        description: Kullanıcının soyadı
+        type: string
+      username:
+        type: string
+    required:
+    - email
+    - name
+    - password
+    - roles
+    - surname
+    - username
+    type: object
+info:
+  contact:
+    email: support@example.com
+    name: API Support
+  description: This is the API documentation for the admin panel project.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  termsOfService: http://swagger.io/terms/
+  title: Admin Panel API
+  version: "1.0"
+paths:
+  /activity-logs:
+    get:
+      description: Retrieve all activity logs with their details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of activity logs
+          schema:
+            items:
+              $ref: '#/definitions/models.ActivityLog'
+            type: array
+        "500":
+          description: Failed to retrieve activity logs
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all activity logs
+      tags:
+      - Activity Logs
+  /categories:
+    get:
+      description: Retrieve all categories with their details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Category'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all categories
+      tags:
+      - Categories
+    post:
+      consumes:
+      - application/json
+      description: Add a new category with its details
+      parameters:
+      - description: Category details
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/models.Category'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new category
+      tags:
+      - Categories
+  /categories/{id}:
+    delete:
+      description: Remove a category by its unique identifier
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid category ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Category not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a category
+      tags:
+      - Categories
+    get:
+      description: Retrieve a single category by its unique identifier
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Invalid category ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Category not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a category by ID
+      tags:
+      - Categories
+    put:
+      consumes:
+      - application/json
+      description: Update a category's details
+      parameters:
+      - description: Category ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated category details
+        in: body
+        name: category
+        required: true
+        schema:
+          $ref: '#/definitions/models.Category'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Category'
+        "400":
+          description: Invalid request payload or category ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Category not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a category
+      tags:
+      - Categories
+  /comments:
+    post:
+      consumes:
+      - application/json
+      description: Add a new comment to a post or as a reply
+      parameters:
+      - description: Comment body
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/models.Comment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new comment
+      tags:
+      - Comments
+  /comments/{comment_id}:
+    delete:
+      description: Delete a comment by its ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Comment deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a comment
+      tags:
+      - Comments
+    put:
+      consumes:
+      - application/json
+      description: Update a comment by its ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      - description: Updated comment body
+        in: body
+        name: comment
+        required: true
+        schema:
+          $ref: '#/definitions/models.Comment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a comment
+      tags:
+      - Comments
+  /comments/{comment_id}/like:
+    post:
+      consumes:
+      - application/json
+      description: Add a like to a specific comment by its ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment liked successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Like a comment
+      tags:
+      - Comments
+  /comments/{comment_id}/reaction:
+    post:
+      consumes:
+      - application/json
+      description: Add a reaction (e.g., like, dislike, emoji) to a comment by its
+        ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      - description: "Reaction (e.g., \U0001F60A, \U0001F621, ❤️)"
+        in: query
+        name: reaction
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reaction added successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Add a reaction to a comment
+      tags:
+      - Comments
+  /comments/{comment_id}/reply:
+    post:
+      consumes:
+      - application/json
+      description: Add a reply to a specific comment by its ID
+      parameters:
+      - description: Comment ID
+        in: path
+        name: comment_id
+        required: true
+        type: string
+      - description: Reply body
+        in: body
+        name: reply
+        required: true
+        schema:
+          $ref: '#/definitions/models.Comment'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reply added successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comment not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Add a reply to a comment
+      tags:
+      - Comments
+  /comments/{post_id}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all comments for a specific post
+      parameters:
+      - description: Post ID
+        in: path
+        name: post_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Comment'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Comments not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get comments by post ID
+      tags:
+      - Comments
+  /contacts:
+    get:
+      description: Retrieve all contact messages sent by users
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.ContactMessage'
+            type: array
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all contact messages
+      tags:
+      - Contacts
+    post:
+      consumes:
+      - application/json
+      description: Add a new contact message sent by a user
+      parameters:
+      - description: Contact message details
+        in: body
+        name: contact
+        required: true
+        schema:
+          $ref: '#/definitions/models.ContactMessage'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.ContactMessage'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new contact message
+      tags:
+      - Contacts
+  /contacts/{id}:
+    delete:
+      description: Remove a contact message by its unique identifier
+      parameters:
+      - description: Contact ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid contact ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Contact message not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a contact message
+      tags:
+      - Contacts
+    get:
+      description: Retrieve a single contact message by its unique identifier
+      parameters:
+      - description: Contact Message ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.ContactMessage'
+        "400":
+          description: Invalid contact ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Contact message not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a contact message by ID
+      tags:
+      - Contacts
+  /languages:
+    get:
+      description: Retrieve all languages, including active and default configurations
+      parameters:
+      - description: Active language code (e.g., 'en', 'tr')
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of languages with active and default settings
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve languages
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all languages
+      tags:
+      - Languages
+    post:
+      consumes:
+      - application/json
+      description: Add a new language configuration
+      parameters:
+      - description: Language configuration
+        in: body
+        name: language
+        required: true
+        schema:
+          $ref: '#/definitions/models.Language'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Language created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create language
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new language
+      tags:
+      - Languages
+  /languages/{id}:
+    delete:
+      description: Remove a language configuration by its ID
+      parameters:
+      - description: Language ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Language deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid language ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete language
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a language
+      tags:
+      - Languages
+    put:
+      consumes:
+      - application/json
+      description: Update an existing language configuration by its ID
+      parameters:
+      - description: Language ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated language fields
+        in: body
+        name: update
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Language updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid language ID or request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update language
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a language
+      tags:
+      - Languages
+  /localized-content:
+    post:
+      consumes:
+      - application/json
+      description: Add new localized content with translations
+      parameters:
+      - description: Localized content details
+        in: body
+        name: content
+        required: true
+        schema:
+          $ref: '#/definitions/models.LocalizedContent'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Content created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create content
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create localized content
+      tags:
+      - Localized Content
+  /localized-content/{id}:
+    get:
+      description: Retrieve localized content in a specific language
+      parameters:
+      - description: Localized Content ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Language code (e.g., 'en', 'tr')
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Localized content details
+          schema:
+            $ref: '#/definitions/models.LocalizedField'
+        "400":
+          description: Invalid content ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Content not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to fetch content
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get localized content by ID
+      tags:
+      - Localized Content
+  /maintenance:
+    post:
+      consumes:
+      - application/json
+      description: Enable or disable maintenance mode with a multilingual message
+      parameters:
+      - description: Maintenance mode settings
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.MaintenanceToggleMode'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Maintenance mode status updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update maintenance mode
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Toggle maintenance mode
+      tags:
+      - Maintenance
+  /media:
+    get:
+      description: Retrieve all media files in the library
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of media files
+          schema:
+            items:
+              $ref: '#/definitions/models.Media'
+            type: array
+        "500":
+          description: Failed to retrieve media files
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all media files
+      tags:
+      - Media
+  /media/{id}:
+    delete:
+      description: Remove a specific media file by its ID
+      parameters:
+      - description: Media file ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid media ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Media file not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete media file
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete media file
+      tags:
+      - Media
+    get:
+      description: Retrieve details of a specific media file by its ID
+      parameters:
+      - description: Media file ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Media file details
+          schema:
+            $ref: '#/definitions/models.Media'
+        "400":
+          description: Invalid media ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Media file not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve media details
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get media details
+      tags:
+      - Media
+  /media/filter:
+    get:
+      description: Retrieve media files filtered by file name, type, or upload date
+      parameters:
+      - description: Filter by file name
+        in: query
+        name: file_name
+        type: string
+      - description: Filter by file type
+        in: query
+        name: file_type
+        type: string
+      - description: Start date for upload filter (YYYY-MM-DD)
+        in: query
+        name: start_date
+        type: string
+      - description: End date for upload filter (YYYY-MM-DD)
+        in: query
+        name: end_date
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Filtered list of media files
+          schema:
+            items:
+              $ref: '#/definitions/models.Media'
+            type: array
+        "500":
+          description: Failed to retrieve filtered media files
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Filter media files
+      tags:
+      - Media
+  /media/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a file to the media library
+      parameters:
+      - description: Media file to upload
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: File uploaded successfully
+          schema:
+            $ref: '#/definitions/models.Media'
+        "400":
+          description: No file uploaded or invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to save file or record
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Upload a new media file
+      tags:
+      - Media
+  /notifications:
+    post:
+      consumes:
+      - application/json
+      description: Add a notification for a specific user or action
+      parameters:
+      - description: Notification details
+        in: body
+        name: notification
+        required: true
+        schema:
+          $ref: '#/definitions/models.Notification'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Notification created successfully
+          schema:
+            $ref: '#/definitions/models.Notification'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create notification
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new notification
+      tags:
+      - Notifications
+  /pages:
+    get:
+      description: Retrieve all pages with their details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Page'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get all pages
+      tags:
+      - Pages
+    post:
+      consumes:
+      - application/json
+      description: Add a new page with its details
+      parameters:
+      - description: Page details
+        in: body
+        name: page
+        required: true
+        schema:
+          $ref: '#/definitions/models.Page'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Page'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new page
+      tags:
+      - Pages
+  /pages/{id}:
+    delete:
+      description: Remove a page by its unique identifier
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a page
+      tags:
+      - Pages
+    get:
+      description: Retrieve a single page by its unique identifier
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Page'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a page by ID
+      tags:
+      - Pages
+    put:
+      consumes:
+      - application/json
+      description: Update a page's details
+      parameters:
+      - description: Page ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated page details
+        in: body
+        name: page
+        required: true
+        schema:
+          $ref: '#/definitions/models.Page'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Page'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a page
+      tags:
+      - Pages
+  /plugins:
+    get:
+      description: Retrieve all plugins available in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of plugins
+          schema:
+            items:
+              $ref: '#/definitions/models.Plugin'
+            type: array
+        "500":
+          description: Failed to retrieve plugins
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all plugins
+      tags:
+      - Plugins
+    post:
+      consumes:
+      - application/json
+      description: Add a new plugin to the system
+      parameters:
+      - description: Plugin details
+        in: body
+        name: plugin
+        required: true
+        schema:
+          $ref: '#/definitions/models.Plugin'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Plugin created successfully
+          schema:
+            $ref: '#/definitions/models.Plugin'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create plugin
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new plugin
+      tags:
+      - Plugins
+  /plugins/{id}:
+    delete:
+      description: Remove a plugin by its unique identifier
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid plugin ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Plugin not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete plugin
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a plugin
+      tags:
+      - Plugins
+    put:
+      consumes:
+      - application/json
+      description: Update plugin details by its ID
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated plugin details
+        in: body
+        name: update
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Plugin updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid plugin ID or request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Plugin not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update plugin
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a plugin
+      tags:
+      - Plugins
+  /plugins/{id}/enable:
+    patch:
+      description: Enable a specific plugin by its ID
+      parameters:
+      - description: Plugin ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Plugin enabled successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid plugin ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Plugin not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to enable plugin
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Enable a plugin
+      tags:
+      - Plugins
+  /plugins/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a plugin file (.so) to the system
+      parameters:
+      - description: Plugin file (.so format)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Plugin uploaded successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid file format or no file uploaded
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to upload plugin file
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Upload a new plugin
+      tags:
+      - Plugins
+  /plugins/uploaded:
+    get:
+      description: Retrieve a list of all uploaded plugin files in the system
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of uploaded plugins
+          schema:
+            items:
+              additionalProperties: true
+              type: object
+            type: array
+        "500":
+          description: Failed to retrieve uploaded plugins
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List uploaded plugins
+      tags:
+      - Plugins
+  /posts:
+    get:
+      description: Retrieve all posts with their details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Post'
+            type: array
+      summary: Get all posts
+      tags:
+      - Posts
+    post:
+      consumes:
+      - application/json
+      description: Create a new post with localized content, tags, and categories
+      parameters:
+      - description: Post Data
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/models.Post'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Create a new post
+      tags:
+      - Posts
+  /posts/{id}:
+    delete:
+      description: Remove a post permanently by its unique identifier
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Delete a post
+      tags:
+      - Posts
+    get:
+      description: Retrieve a single post by its unique identifier, with localized
+        content
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Language code for localization (e.g., 'en', 'tr')
+        in: query
+        name: lang
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get a post by ID
+      tags:
+      - Posts
+    put:
+      consumes:
+      - application/json
+      description: Update post details such as localized content, tags, and categories
+      parameters:
+      - description: Post ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Post Data
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/models.Post'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.Post'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Update a post
+      tags:
+      - Posts
+  /posts/filter:
+    get:
+      description: Retrieve posts by category, tag, or status
+      parameters:
+      - description: Category ID to filter posts
+        in: query
+        name: category
+        type: string
+      - description: Tag ID to filter posts
+        in: query
+        name: tag
+        type: string
+      - description: Status to filter posts (e.g., 'draft', 'published')
+        in: query
+        name: status
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Post'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get filtered posts
+      tags:
+      - Posts
+  /posts/lang/{lang}:
+    get:
+      description: Retrieve all posts localized to a specific language
+      parameters:
+      - description: Language code (e.g., 'en', 'tr')
+        in: path
+        name: lang
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Post'
+            type: array
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Get posts by language
+      tags:
+      - Posts
+  /roles:
+    get:
+      description: Retrieve all roles with their permissions and details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of roles
+          schema:
+            items:
+              $ref: '#/definitions/models.Role'
+            type: array
+        "500":
+          description: Failed to retrieve roles
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Add a new role with its permissions and details
+      parameters:
+      - description: Role details
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/models.Role'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Role created successfully
+          schema:
+            $ref: '#/definitions/models.Role'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new role
+      tags:
+      - Roles
+  /roles/{id}:
+    delete:
+      description: Remove a role by its unique identifier
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid role ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a role
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Update role details, including permissions
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated role details
+        in: body
+        name: update
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid role ID or request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a role
+      tags:
+      - Roles
+  /sliders:
+    get:
+      description: Retrieve all sliders with their details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of sliders
+          schema:
+            items:
+              $ref: '#/definitions/models.Slider'
+            type: array
+        "500":
+          description: Failed to retrieve sliders
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all sliders
+      tags:
+      - Sliders
+    post:
+      consumes:
+      - application/json
+      description: Add a new slider with its details
+      parameters:
+      - description: Slider details
+        in: body
+        name: slider
+        required: true
+        schema:
+          $ref: '#/definitions/models.Slider'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Slider created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create slider
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new slider
+      tags:
+      - Sliders
+  /sliders/{id}:
+    delete:
+      description: Remove a slider by its unique identifier
+      parameters:
+      - description: Slider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid slider ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete slider
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a slider
+      tags:
+      - Sliders
+    put:
+      consumes:
+      - application/json
+      description: Update the details of a specific slider by its ID
+      parameters:
+      - description: Slider ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated slider details
+        in: body
+        name: update
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Slider updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid slider ID or request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update slider
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a slider
+      tags:
+      - Sliders
+  /svc/auth/login-by-email:
+    post:
+      consumes:
+      - application/json
+      description: E-posta ve şifre ile giriş. Geçerli access token varsa aynı token
+        döner; yoksa yeni access+refresh üretilir.
+      parameters:
+      - description: Kullanıcı giriş bilgileri
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: E-posta ile Giriş
+      tags:
+      - Auth
+  /svc/auth/login-by-phone:
+    post:
+      consumes:
+      - application/json
+      description: Telefon + şifre ile giriş. Geçerli access token varsa aynı token
+        döner; yoksa yeni access+refresh üretilir.
+      parameters:
+      - description: Kullanıcı giriş bilgileri
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            password:
+              type: string
+            phone_number:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Telefon ile Giriş
+      tags:
+      - Auth
+  /svc/auth/login-by-username:
+    post:
+      consumes:
+      - application/json
+      description: Kullanıcı adı ve şifre ile giriş. Geçerli access token varsa aynı
+        token döner; yoksa yeni access+refresh üretilir.
+      parameters:
+      - description: Kullanıcı giriş bilgileri
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            password:
+              type: string
+            username:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Kullanıcı Adı ile Giriş
+      tags:
+      - Auth
+  /svc/auth/logout:
+    post:
+      description: Kullanıcının tüm refresh + access + CSRF tokenlarını siler (tam
+        çıkış).
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - Auth
+  /svc/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Geçerli refresh token ile yeni access token üretir
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            refresh_token:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh Access Token
+      tags:
+      - Auth
+  /svc/auth/request-password-reset:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset email to the user
+      parameters:
+      - description: User email
+        in: body
+        name: email
+        required: true
+        schema:
+          $ref: '#/definitions/models.RequestPasswordReset'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password reset email sent
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Email not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to send password reset email
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Request password reset
+      tags:
+      - Authentication
+  /svc/auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Resets a user's password using a valid reset token
+      parameters:
+      - description: Password reset token
+        in: query
+        name: token
+        required: true
+        type: string
+      - description: New password
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.ResetPasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Password updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload or token
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update password
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reset password
+      tags:
+      - Authentication
+  /svc/auth/send-verification/{userID}:
+    post:
+      description: Sends a verification email to a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Verification email sent
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to send verification email
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Send verification email
+      tags:
+      - Authentication
+  /svc/auth/validate:
+    get:
+      description: JWT token geçerli mi kontrol eder, kullanıcı bilgisini döner.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Token Doğrulama
+      tags:
+      - Auth
+  /svc/auth/verify-email:
+    get:
+      description: Verifies a user's email using a token
+      parameters:
+      - description: Verification token
+        in: query
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Email verified successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid or expired token
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Verify email
+      tags:
+      - Authentication
+  /svc/menus:
+    get:
+      description: Retrieve all menus, including frontend and backend menus
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu type (frontend or backend)
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of menus
+          schema:
+            items:
+              $ref: '#/definitions/models.Menu'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve menus
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all menus
+      tags:
+      - Menus
+    post:
+      consumes:
+      - application/json
+      description: Add a new menu with its details
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu details
+        in: body
+        name: menu
+        required: true
+        schema:
+          $ref: '#/definitions/models.Menu'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Menu created successfully
+          schema:
+            $ref: '#/definitions/models.Menu'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create menu
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new menu
+      tags:
+      - Menus
+  /svc/menus/{id}:
+    delete:
+      description: Remove a menu by its unique identifier
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid menu ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Menu not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete menu
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a menu
+      tags:
+      - Menus
+    put:
+      consumes:
+      - application/json
+      description: Update menu details by its ID
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated menu details
+        in: body
+        name: menu
+        required: true
+        schema:
+          $ref: '#/definitions/models.Menu'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Menu updated successfully
+          schema:
+            $ref: '#/definitions/models.Menu'
+        "400":
+          description: Invalid request payload or menu ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Menu not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update menu
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a menu
+      tags:
+      - Menus
+  /svc/settings:
+    get:
+      description: Retrieve all application settings including general settings and
+        configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Application settings
+          schema:
+            $ref: '#/definitions/models.ApplicationSettings'
+        "500":
+          description: Failed to retrieve settings
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get application settings
+      tags:
+      - Settings
+    put:
+      consumes:
+      - application/json
+      description: Update application settings with new values
+      parameters:
+      - description: Updated settings data
+        in: body
+        name: update
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Settings updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update settings
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update application settings
+      tags:
+      - Settings
+  /svc/settings/social-media:
+    get:
+      description: Retrieve all social media links configured for the application
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of social media links
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve social media links
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get social media links
+      tags:
+      - Social Media
+    put:
+      consumes:
+      - application/json
+      description: Update the social media links for the application
+      parameters:
+      - description: Updated social media links
+        in: body
+        name: links
+        required: true
+        schema:
+          additionalProperties:
+            $ref: '#/definitions/models.SocialMedia'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Social media links updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update social media links
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update social media links
+      tags:
+      - Social Media
+  /tags:
+    get:
+      description: Retrieve all tags with their details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of tags
+          schema:
+            items:
+              $ref: '#/definitions/models.Tag'
+            type: array
+        "500":
+          description: Failed to retrieve tags
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all tags
+      tags:
+      - Tags
+    post:
+      consumes:
+      - application/json
+      description: Add a new tag with its details
+      parameters:
+      - description: Tag details
+        in: body
+        name: tag
+        required: true
+        schema:
+          $ref: '#/definitions/models.Tag'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Tag created successfully
+          schema:
+            $ref: '#/definitions/models.Tag'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create tag
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new tag
+      tags:
+      - Tags
+  /tags/{id}:
+    delete:
+      description: Remove a tag by its unique identifier
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid tag ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Tag not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete tag
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a tag
+      tags:
+      - Tags
+    get:
+      description: Retrieve a single tag by its unique identifier
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tag details
+          schema:
+            $ref: '#/definitions/models.Tag'
+        "400":
+          description: Invalid tag ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Tag not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve tag
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a tag by ID
+      tags:
+      - Tags
+    put:
+      consumes:
+      - application/json
+      description: Update the details of a specific tag by its ID
+      parameters:
+      - description: Tag ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated tag details
+        in: body
+        name: tag
+        required: true
+        schema:
+          $ref: '#/definitions/models.Tag'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Tag updated successfully
+          schema:
+            $ref: '#/definitions/models.Tag'
+        "400":
+          description: Invalid tag ID or request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Tag not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update tag
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a tag
+      tags:
+      - Tags
+  /users:
+    get:
+      description: Retrieve all users with their details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of users
+          schema:
+            items:
+              $ref: '#/definitions/models.User'
+            type: array
+        "500":
+          description: Failed to retrieve users
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all users
+      tags:
+      - Users
+    post:
+      consumes:
+      - application/json
+      description: Add a new user with roles and hashed password
+      parameters:
+      - description: User details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.User'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create user
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new user
+      tags:
+      - Users
+  /users/{id}:
+    delete:
+      description: Remove a user by its unique identifier
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: User deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete user
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a user
+      tags:
+      - Users
+    put:
+      consumes:
+      - application/json
+      description: Update user details including name, roles, and password
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated user details
+        in: body
+        name: user
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload or user ID
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Permission denied
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update user
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a user
+      tags:
+      - Users
+  /users/language:
+    put:
+      consumes:
+      - application/json
+      description: Update the preferred language of the current user
+      parameters:
+      - description: Preferred language request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.PreferredLanguageRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Preferred language updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid language code or disabled language
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update preferred language
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update preferred language
+      tags:
+      - Users
+security:
+- BearerAuth: []
+swagger: "2.0"
