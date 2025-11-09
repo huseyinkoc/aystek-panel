@@ -4,6 +4,7 @@ import (
 	"admin-panel/models"
 	"context"
 	"errors"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -13,34 +14,37 @@ import (
 
 var permissionsCollection *mongo.Collection
 
+// InitPermissionService — dinamik DB ismine göre koleksiyonu ayarla
 func InitPermissionService(client *mongo.Client) {
-	permissionsCollection = client.Database("admin_panel").Collection("permissions")
-	// Modül isimleri benzersiz olsun
-	_, _ = permissionsCollection.Indexes().CreateOne(context.TODO(),
-		mongo.IndexModel{
-			Keys:    bson.M{"module": 1},
-			Options: nil,
-		})
+	dbName := os.Getenv("MONGO_DBNAME")
+	if dbName == "" {
+		dbName = "admin_panel"
+	}
+	permissionsCollection = client.Database(dbName).Collection("permissions")
+
+	_, _ = permissionsCollection.Indexes().CreateOne(context.TODO(), mongo.IndexModel{
+		Keys: bson.M{"module": 1},
+	})
 }
 
-// ✅ Tüm modülleri getir
-func GetAllPermissionModules(ctx context.Context) ([]models.PermissionModule, error) {
+// GetAllPermissions — tüm modül ve aksiyonları getir
+func GetAllPermissions(ctx context.Context) ([]models.Permission, error) {
 	cursor, err := permissionsCollection.Find(ctx, bson.M{})
 	if err != nil {
 		return nil, err
 	}
 	defer cursor.Close(ctx)
 
-	var modules []models.PermissionModule
+	var modules []models.Permission
 	if err := cursor.All(ctx, &modules); err != nil {
 		return nil, err
 	}
 	return modules, nil
 }
 
-// ✅ Tek modül getir (ID ile)
-func GetPermissionModuleByID(ctx context.Context, id primitive.ObjectID) (*models.PermissionModule, error) {
-	var module models.PermissionModule
+// GetPermissionByID — tek kayıt getir
+func GetPermissionByID(ctx context.Context, id primitive.ObjectID) (*models.Permission, error) {
+	var module models.Permission
 	err := permissionsCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&module)
 	if err != nil {
 		return nil, err
@@ -48,8 +52,8 @@ func GetPermissionModuleByID(ctx context.Context, id primitive.ObjectID) (*model
 	return &module, nil
 }
 
-// ✅ Yeni modül oluştur
-func CreatePermissionModule(ctx context.Context, module models.PermissionModule) (*mongo.InsertOneResult, error) {
+// CreatePermission — yeni modül ekle
+func CreatePermission(ctx context.Context, module models.Permission) (*mongo.InsertOneResult, error) {
 	if module.Module == "" {
 		return nil, errors.New("module name is required")
 	}
@@ -64,8 +68,8 @@ func CreatePermissionModule(ctx context.Context, module models.PermissionModule)
 	return permissionsCollection.InsertOne(ctx, module)
 }
 
-// ✅ Güncelle
-func UpdatePermissionModule(ctx context.Context, id primitive.ObjectID, module models.PermissionModule) error {
+// UpdatePermission — modül veya aksiyon güncelle
+func UpdatePermission(ctx context.Context, id primitive.ObjectID, module models.Permission) error {
 	update := bson.M{
 		"$set": bson.M{
 			"module":     module.Module,
@@ -78,8 +82,8 @@ func UpdatePermissionModule(ctx context.Context, id primitive.ObjectID, module m
 	return err
 }
 
-// ✅ Sil
-func DeletePermissionModule(ctx context.Context, id primitive.ObjectID) error {
+// DeletePermission — modül sil
+func DeletePermission(ctx context.Context, id primitive.ObjectID) error {
 	_, err := permissionsCollection.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
