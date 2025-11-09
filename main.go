@@ -84,6 +84,7 @@ func main() {
 	services.InitCommentService(configs.DB)
 	services.InitNotificationService(configs.DB)
 	services.InitRolesService(configs.DB)
+	services.InitPermissionService(configs.DB)
 	services.InitMenuService(configs.DB)
 	services.InitContactService(configs.DB)
 	services.InitEmailVerificationService(configs.DB)
