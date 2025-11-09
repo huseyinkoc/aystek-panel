@@ -44,6 +44,22 @@ func GetRolePermissions(ctx context.Context, roleID string) ([]primitive.ObjectI
 	return role.Permissions, nil
 }
 
+// GetRolePermissionsByName finds a role by its name and returns its permission IDs.
+// This fixes the mismatch where helpers passed a roleName but existing GetRolePermissions expected an ObjectID hex.
+func GetRolePermissionsByName(ctx context.Context, roleName string) ([]primitive.ObjectID, error) {
+	if rolesCollection == nil {
+		return nil, errors.New("roles service not initialized")
+	}
+
+	var role models.Role
+	err := rolesCollection.FindOne(ctx, bson.M{"name": roleName}).Decode(&role)
+	if err != nil {
+		return nil, err
+	}
+
+	return role.Permissions, nil
+}
+
 // CreateRole creates a new role
 func CreateRole(ctx context.Context, role models.Role) (*mongo.InsertOneResult, error) {
 	if rolesCollection == nil {
@@ -109,7 +125,7 @@ func DeleteRole(ctx context.Context, id primitive.ObjectID) error {
 	return err
 }
 
-// GetAllRoles returns all roles
+// GetAllRoles returns all roles (raw documents)
 func GetAllRoles(ctx context.Context) ([]models.Role, error) {
 	if rolesCollection == nil {
 		return nil, errors.New("roles service not initialized")
@@ -142,19 +158,40 @@ func GetRoleByID(ctx context.Context, id primitive.ObjectID) (*models.Role, erro
 	return &role, nil
 }
 
-// GetAllRolesWithPermissions joins roles with permission details
+// GetAllRolesWithPermissions joins roles with permission details.
+// Handles case where roles.permissions are stored as hex strings by converting them to ObjectId for lookup.
 func GetAllRolesWithPermissions(ctx context.Context) ([]bson.M, error) {
 	if rolesCollection == nil {
 		return nil, errors.New("roles service not initialized")
 	}
 
+	// Add stage to convert string hex permission ids to ObjectId if necessary, then lookup
 	pipeline := mongo.Pipeline{
+		// convert each element in permissions to ObjectId when it is a string
+		{{Key: "$addFields", Value: bson.M{
+			"__permissions_obj": bson.M{
+				"$map": bson.M{
+					"input": "$permissions",
+					"as":    "p",
+					"in": bson.M{
+						"$cond": bson.A{
+							bson.M{"$isString": "$$p"},
+							bson.M{"$convert": bson.M{"input": "$$p", "to": "objectId", "onError": nil, "onNull": nil}},
+							"$$p",
+						},
+					},
+				},
+			},
+		}}},
+		// lookup using converted array
 		{{Key: "$lookup", Value: bson.M{
 			"from":         "permissions",
-			"localField":   "permissions",
+			"localField":   "__permissions_obj",
 			"foreignField": "_id",
 			"as":           "permission_details",
 		}}},
+		// optional: remove helper field
+		{{Key: "$project", Value: bson.M{"__permissions_obj": 0}}},
 	}
 
 	cursor, err := rolesCollection.Aggregate(ctx, pipeline)
@@ -168,4 +205,52 @@ func GetAllRolesWithPermissions(ctx context.Context) ([]bson.M, error) {
 		return nil, err
 	}
 	return roles, nil
+}
+
+// GetRoleWithPermissions returns single role with permission_details resolved (handles hex strings)
+func GetRoleWithPermissions(ctx context.Context, id primitive.ObjectID) (bson.M, error) {
+	if rolesCollection == nil {
+		return nil, errors.New("roles service not initialized")
+	}
+
+	matchStage := bson.D{{Key: "$match", Value: bson.M{"_id": id}}}
+	addFieldsStage := bson.D{{Key: "$addFields", Value: bson.M{
+		"__permissions_obj": bson.M{
+			"$map": bson.M{
+				"input": "$permissions",
+				"as":    "p",
+				"in": bson.M{
+					"$cond": bson.A{
+						bson.M{"$isString": "$$p"},
+						bson.M{"$convert": bson.M{"input": "$$p", "to": "objectId", "onError": nil, "onNull": nil}},
+						"$$p",
+					},
+				},
+			},
+		},
+	}}}
+	lookupStage := bson.D{{Key: "$lookup", Value: bson.M{
+		"from":         "permissions",
+		"localField":   "__permissions_obj",
+		"foreignField": "_id",
+		"as":           "permission_details",
+	}}}
+	projectStage := bson.D{{Key: "$project", Value: bson.M{"__permissions_obj": 0}}}
+
+	pipeline := mongo.Pipeline{matchStage, addFieldsStage, lookupStage, projectStage}
+
+	cursor, err := rolesCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var results []bson.M
+	if err := cursor.All(ctx, &results); err != nil {
+		return nil, err
+	}
+	if len(results) == 0 {
+		return nil, mongo.ErrNoDocuments
+	}
+	return results[0], nil
 }

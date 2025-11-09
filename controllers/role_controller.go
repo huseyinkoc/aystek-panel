@@ -70,7 +70,23 @@ func CreateRoleHandler(c *gin.Context) {
 // @Router /svc/roles [get]
 func GetAllRolesHandler(c *gin.Context) {
 	expand := c.Query("expand") == "true" // permission detaylarını da ekle
-	roles, err := services.GetAllRolesWithPermissions(c.Request.Context())
+
+	if expand {
+		roles, err := services.GetAllRolesWithPermissions(c.Request.Context())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve roles"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"count":  len(roles),
+			"roles":  roles,
+			"expand": expand,
+		})
+		return
+	}
+
+	// non-expand: return simple roles
+	roles, err := services.GetAllRoles(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve roles"})
 		return
@@ -98,6 +114,17 @@ func GetRoleHandler(c *gin.Context) {
 	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role ID"})
+		return
+	}
+
+	expand := c.Query("expand") == "true"
+	if expand {
+		roleDoc, err := services.GetRoleWithPermissions(c.Request.Context(), oid)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"role": roleDoc})
 		return
 	}
 

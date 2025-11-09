@@ -13,5 +13,5 @@ type Permission struct {
 	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
 	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
 	CreatedBy string             `bson:"created_by" json:"created_by"`
-	UpdatedBy string             `bson:"updated_by,omitempty" json:"updated_by,omitempty"`
+	UpdatedBy string             `bson:"updated_by" json:"updated_by"`
 }

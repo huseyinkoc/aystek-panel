@@ -87,3 +87,35 @@ func DeletePermission(ctx context.Context, id primitive.ObjectID) error {
 	_, err := permissionsCollection.DeleteOne(ctx, bson.M{"_id": id})
 	return err
 }
+
+// GetPermissionsByHexIDs — hex ID'lerine göre modüller getir
+func GetPermissionsByHexIDs(ctx context.Context, hexIDs []string) ([]models.Permission, error) {
+	var ids []primitive.ObjectID
+	for _, h := range hexIDs {
+		oid, err := primitive.ObjectIDFromHex(h)
+		if err != nil {
+			// skip invalid hex strings
+			continue
+		}
+		ids = append(ids, oid)
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	cur, err := permissionsCollection.Find(ctx, bson.M{"_id": bson.M{"$in": ids}})
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	var perms []models.Permission
+	for cur.Next(ctx) {
+		var p models.Permission
+		if err := cur.Decode(&p); err != nil {
+			continue
+		}
+		perms = append(perms, p)
+	}
+	return perms, nil
+}
