@@ -2,6 +2,7 @@ package services
 
 import (
 	"admin-panel/configs"
+	"admin-panel/templates"
 	"crypto/tls"
 	"fmt"
 	"net/smtp"
@@ -19,7 +20,10 @@ func SendEmail(to []string, subject string, body string) error {
 	addr := fmt.Sprintf("%s:%d", emailConfig.Host, emailConfig.Port)
 	auth := smtp.PlainAuth("", emailConfig.Username, emailConfig.Password, emailConfig.Host)
 
-	msg := []byte(fmt.Sprintf("Subject: %s\r\n\r\n%s", subject, body))
+	msg := []byte(fmt.Sprintf("Subject: %s\r\n"+
+		"MIME-Version: 1.0\r\n"+
+		"Content-Type: text/html; charset=\"UTF-8\"\r\n"+
+		"\r\n%s", subject, body))
 
 	// TLS veya SSL bağlantısını kontrol et
 	if emailConfig.UseTLS {
@@ -107,4 +111,18 @@ func sendEmail(client *smtp.Client, msg []byte, to []string) error {
 	}
 
 	return client.Quit()
+}
+
+// SendPasswordResetEmail sends password reset email using template
+func SendPasswordResetEmail(email, username, resetLink string) error {
+	subject := "AYSTEK - Şifre Sıfırlama"
+	body := templates.PasswordResetEmailTemplate(username, resetLink)
+	return SendEmail([]string{email}, subject, body)
+}
+
+// SendWelcomeEmail sends welcome email using template (opsiyonel)
+func SendWelcomeEmail(email, username string) error {
+	subject := "AYSTEK - Hoş Geldiniz!"
+	body := templates.WelcomeEmailTemplate(username)
+	return SendEmail([]string{email}, subject, body)
 }

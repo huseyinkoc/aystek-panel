@@ -3,6 +3,7 @@ package configs
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -15,6 +16,7 @@ func GetJWTSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		secret = "change_me_please"
+		log.Fatal("JWT_SECRET .env içinde tanımlı olmalı")
 	}
 	return []byte(secret)
 }

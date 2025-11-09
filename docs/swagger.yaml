@@ -240,6 +240,17 @@ definitions:
     type: object
   models.Page:
     type: object
+  models.Permission:
+    properties:
+      actions:
+        description: 'Örn: ["read", "write", "approve"]'
+        items:
+          type: string
+        type: array
+      module:
+        description: 'Örn: "users"'
+        type: string
+    type: object
   models.Plugin:
     type: object
   models.Post:
@@ -289,41 +300,71 @@ definitions:
     required:
     - language_code
     type: object
+  models.RegisterRequest:
+    properties:
+      email:
+        type: string
+      first_name:
+        type: string
+      last_name:
+        type: string
+      password:
+        minLength: 6
+        type: string
+      phone_number:
+        description: YENİ
+        type: string
+      username:
+        maxLength: 30
+        minLength: 3
+        type: string
+    required:
+    - email
+    - first_name
+    - last_name
+    - password
+    - phone_number
+    - username
+    type: object
   models.RequestPasswordReset:
     properties:
       email:
-        example: abc@mail.com
         type: string
+    required:
+    - email
     type: object
-  models.ResetPasswordRequest:
+  models.ResetPasswordTokenRequest:
     properties:
       new_password:
-        example: newpassword123
+        minLength: 6
         type: string
+      token:
+        type: string
+    required:
+    - new_password
+    - token
     type: object
   models.Role:
     properties:
       created_at:
-        description: Oluşturulma tarihi
         type: string
       created_by:
-        description: Rolü oluşturan kullanıcı
+        type: string
+      description:
         type: string
       id:
-        description: 'Rol ID''si (örn: "admin")'
+        type: string
+      is_system:
+        type: boolean
+      name:
         type: string
       permissions:
-        additionalProperties:
-          items:
-            type: string
-          type: array
-        description: Modül bazlı izinler
-        type: object
+        items:
+          $ref: '#/definitions/models.Permission'
+        type: array
       updated_at:
-        description: Güncellenme tarihi
         type: string
       updated_by:
-        description: Rolü güncelleyen son kullanıcı
         type: string
     type: object
   models.Slider:
@@ -354,38 +395,39 @@ definitions:
     type: object
   models.User:
     properties:
+      created_at:
+        type: string
       email:
         type: string
       full_name:
-        description: Otomatik oluşturulan tam ad
         type: string
       id:
         type: string
+      is_approved_by_admin:
+        type: boolean
+      is_email_verified:
+        type: boolean
       name:
-        description: Kullanıcının adı
         type: string
       password:
         type: string
       phone_number:
         type: string
       preferred_language:
-        description: Kullanıcı tercihi
         type: string
       roles:
-        description: '["admin", "editor", "user"]'
         items:
           type: string
         type: array
       surname:
-        description: Kullanıcının soyadı
+        type: string
+      updated_at:
         type: string
       username:
         type: string
     required:
     - email
     - name
-    - password
-    - roles
     - surname
     - username
     type: object
@@ -421,6 +463,58 @@ paths:
       summary: Get all activity logs
       tags:
       - Activity Logs
+  /admin/users/{id}/approve:
+    patch:
+      description: Approve user by admin (only if email is verified)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve user
+      tags:
+      - Users
+  /admin/users/{id}/roles:
+    patch:
+      description: Assign roles to user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Roles
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            items:
+              type: string
+            type: array
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign roles
+      tags:
+      - Users
   /categories:
     get:
       description: Retrieve all categories with their details
@@ -1979,25 +2073,6 @@ paths:
       tags:
       - Posts
   /roles:
-    get:
-      description: Retrieve all roles with their permissions and details
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of roles
-          schema:
-            items:
-              $ref: '#/definitions/models.Role'
-            type: array
-        "500":
-          description: Failed to retrieve roles
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get all roles
-      tags:
-      - Roles
     post:
       consumes:
       - application/json
@@ -2062,6 +2137,34 @@ paths:
             additionalProperties: true
             type: object
       summary: Delete a role
+      tags:
+      - Roles
+    get:
+      description: Retrieve a role with its permissions and details by its unique
+        identifier
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role details
+          schema:
+            $ref: '#/definitions/models.Role'
+        "400":
+          description: Invalid role ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a role by ID
       tags:
       - Roles
     put:
@@ -2395,15 +2498,39 @@ paths:
       summary: Refresh Access Token
       tags:
       - Auth
+  /svc/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Yeni kullanıcı kaydı ve doğrulama e-postası gönderimi
+      parameters:
+      - description: Registration data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register new user
+      tags:
+      - Auth
   /svc/auth/request-password-reset:
     post:
       consumes:
       - application/json
-      description: Sends a password reset email to the user
+      description: Aktif kullanıcı için şifre sıfırlama e-postası gönderir
       parameters:
-      - description: User email
+      - description: Email
         in: body
-        name: email
+        name: body
         required: true
         schema:
           $ref: '#/definitions/models.RequestPasswordReset'
@@ -2411,69 +2538,41 @@ paths:
       - application/json
       responses:
         "200":
-          description: Password reset email sent
+          description: OK
           schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Email not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to send password reset email
-          schema:
-            additionalProperties: true
+            additionalProperties:
+              type: string
             type: object
       summary: Request password reset
       tags:
-      - Authentication
+      - Auth
   /svc/auth/reset-password:
     post:
       consumes:
       - application/json
-      description: Resets a user's password using a valid reset token
+      description: Token ile şifreyi sıfırlama
       parameters:
-      - description: Password reset token
-        in: query
-        name: token
-        required: true
-        type: string
-      - description: New password
+      - description: Token and new password
         in: body
-        name: request
+        name: body
         required: true
         schema:
-          $ref: '#/definitions/models.ResetPasswordRequest'
+          $ref: '#/definitions/models.ResetPasswordTokenRequest'
       produces:
       - application/json
       responses:
         "200":
-          description: Password updated successfully
+          description: OK
           schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid request payload or token
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to update password
-          schema:
-            additionalProperties: true
+            additionalProperties:
+              type: string
             type: object
       summary: Reset password
       tags:
-      - Authentication
+      - Auth
   /svc/auth/send-verification/{userID}:
     post:
-      description: Sends a verification email to a specific user
+      description: Belirli kullanıcıya doğrulama e-postası gönderir
       parameters:
       - description: User ID
         in: path
@@ -2482,23 +2581,23 @@ paths:
         type: string
       responses:
         "200":
-          description: Verification email sent
+          description: OK
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Invalid user ID
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
         "500":
-          description: Failed to send verification email
+          description: Internal Server Error
           schema:
             additionalProperties: true
             type: object
       summary: Send verification email
       tags:
-      - Authentication
+      - Auth
   /svc/auth/validate:
     get:
       description: JWT token geçerli mi kontrol eder, kullanıcı bilgisini döner.
@@ -2525,29 +2624,29 @@ paths:
       summary: Token Doğrulama
       tags:
       - Auth
-  /svc/auth/verify-email:
-    get:
+  /svc/auth/verify-email/{token}:
+    post:
       description: Verifies a user's email using a token
       parameters:
       - description: Verification token
-        in: query
+        in: path
         name: token
         required: true
         type: string
       responses:
         "200":
-          description: Email verified successfully
+          description: OK
           schema:
             additionalProperties: true
             type: object
         "400":
-          description: Invalid or expired token
+          description: Bad Request
           schema:
             additionalProperties: true
             type: object
       summary: Verify email
       tags:
-      - Authentication
+      - Auth
   /svc/menus:
     get:
       description: Retrieve all menus, including frontend and backend menus
@@ -2723,6 +2822,26 @@ paths:
       summary: Update a menu
       tags:
       - Menus
+  /svc/roles:
+    get:
+      description: Retrieve all roles with their permissions and details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of roles
+          schema:
+            items:
+              $ref: '#/definitions/models.Role'
+            type: array
+        "500":
+          description: Failed to retrieve roles
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all roles
+      tags:
+      - Roles
   /svc/settings:
     get:
       description: Retrieve all application settings including general settings and

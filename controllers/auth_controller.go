@@ -3,14 +3,23 @@ package controllers
 import (
 	"admin-panel/configs"
 	"admin-panel/middlewares"
+	"admin-panel/models"
 	"admin-panel/services"
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // Claims yapısı - JWT v5
@@ -21,6 +30,15 @@ type Claims struct {
 	PreferredLanguage string   `json:"preferred_language"`
 	Roles             []string `json:"roles"`
 	jwt.RegisteredClaims
+}
+
+// Rastgele token oluştur
+func generateResetToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
 }
 
 // ------------------------------------------------------
@@ -55,9 +73,9 @@ func LoginByUsernameHandler(c *gin.Context) {
 		return
 	}
 
-	// 1) Kullanıcının geçerli access token’ı var mı? Varsa aynısını döndür.
+	// Geçerli access token varsa aynısını döndür
 	if tokenStr, _, err := services.GetValidAccessToken(c.Request.Context(), user.ID.Hex()); err == nil && tokenStr != "" {
-		csrf := middlewares.GetStoredCSRFToken(user.Username) // eğer yoksa, aşağıda yeniden üretilecek
+		csrf := middlewares.GetStoredCSRFToken(user.Username)
 		if csrf == "" {
 			csrf, _ = middlewares.GenerateCSRFToken()
 			middlewares.StoreCSRFToken(user.Username, csrf)
@@ -77,7 +95,7 @@ func LoginByUsernameHandler(c *gin.Context) {
 		return
 	}
 
-	// 2) Geçerli token yoksa — yeni access + refresh oluştur
+	// Yeni access + refresh oluştur
 	accessExp := time.Now().Add(configs.GetJWTExpiry())
 	claims := &Claims{
 		UserID:            user.ID.Hex(),
@@ -100,10 +118,8 @@ func LoginByUsernameHandler(c *gin.Context) {
 	}
 	_ = services.SaveAccessToken(c.Request.Context(), user.ID.Hex(), accessToken, accessExp)
 
-	// Refresh token
 	refreshToken := primitive.NewObjectID().Hex()
-	refreshExp := time.Now().Add(configs.GetRefreshExpiry())
-	_ = services.SaveRefreshToken(c.Request.Context(), user.ID.Hex(), refreshToken, refreshExp)
+	_ = services.SaveRefreshToken(c.Request.Context(), user.ID.Hex(), refreshToken)
 
 	csrfToken, _ := middlewares.GenerateCSRFToken()
 	middlewares.StoreCSRFToken(user.Username, csrfToken)
@@ -146,14 +162,26 @@ func LoginByEmailHandler(c *gin.Context) {
 
 	user, err := services.GetUserByEmail(input.Email)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bulunamadı"})
-		return
-	}
-	if err := services.CheckPassword(user.Password, input.Password); err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Hatalı şifre"})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "E-posta veya şifre yanlış"})
 		return
 	}
 
+	// Aktiflik kontrolleri
+	if !user.IsEmailVerified {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Lütfen e-posta adresinizi doğrulayın"})
+		return
+	}
+	if !user.IsApprovedByAdmin {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Hesabınız henüz yönetici tarafından onaylanmamış. Lütfen bekleyin."})
+		return
+	}
+
+	if err := services.CheckPassword(user.Password, input.Password); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "E-posta veya şifre yanlış"})
+		return
+	}
+
+	// Geçerli access token varsa aynısını döndür
 	if tokenStr, _, err := services.GetValidAccessToken(c.Request.Context(), user.ID.Hex()); err == nil && tokenStr != "" {
 		csrf := middlewares.GetStoredCSRFToken(user.Email)
 		if csrf == "" {
@@ -164,16 +192,25 @@ func LoginByEmailHandler(c *gin.Context) {
 			"token":      tokenStr,
 			"csrf_token": csrf,
 			"message":    "Zaten giriş yapılmış.",
+			"user": gin.H{
+				"id":       user.ID.Hex(),
+				"username": user.Username,
+				"name":     user.Name,
+				"surname":  user.Surname,
+				"roles":    user.Roles,
+			},
 		})
 		return
 	}
 
+	// Yeni access + refresh oluştur
 	accessExp := time.Now().Add(configs.GetJWTExpiry())
 	claims := &Claims{
-		UserID:   user.ID.Hex(),
-		Username: user.Username,
-		Email:    user.Email,
-		Roles:    user.Roles,
+		UserID:            user.ID.Hex(),
+		Username:          user.Username,
+		Email:             user.Email,
+		Roles:             user.Roles,
+		PreferredLanguage: user.PreferredLanguage,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(accessExp),
@@ -185,8 +222,7 @@ func LoginByEmailHandler(c *gin.Context) {
 	_ = services.SaveAccessToken(c.Request.Context(), user.ID.Hex(), accessToken, accessExp)
 
 	refreshToken := primitive.NewObjectID().Hex()
-	refreshExp := time.Now().Add(configs.GetRefreshExpiry())
-	_ = services.SaveRefreshToken(c.Request.Context(), user.ID.Hex(), refreshToken, refreshExp)
+	_ = services.SaveRefreshToken(c.Request.Context(), user.ID.Hex(), refreshToken)
 
 	csrfToken, _ := middlewares.GenerateCSRFToken()
 	middlewares.StoreCSRFToken(user.Email, csrfToken)
@@ -196,6 +232,13 @@ func LoginByEmailHandler(c *gin.Context) {
 		"csrf_token":    csrfToken,
 		"refresh_token": refreshToken,
 		"message":       "Giriş başarılı",
+		"user": gin.H{
+			"id":       user.ID.Hex(),
+			"username": user.Username,
+			"name":     user.Name,
+			"surname":  user.Surname,
+			"roles":    user.Roles,
+		},
 	})
 }
 
@@ -220,7 +263,7 @@ func LoginByPhoneHandler(c *gin.Context) {
 		return
 	}
 
-	user, err := services.GetUserByPhone(input.PhoneNumber)
+	user, err := services.GetUserByPhoneNumber(input.PhoneNumber)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bulunamadı"})
 		return
@@ -255,8 +298,7 @@ func LoginByPhoneHandler(c *gin.Context) {
 	_ = services.SaveAccessToken(c.Request.Context(), user.ID.Hex(), accessToken, accessExp)
 
 	refreshToken := primitive.NewObjectID().Hex()
-	refreshExp := time.Now().Add(configs.GetRefreshExpiry())
-	_ = services.SaveRefreshToken(c.Request.Context(), user.ID.Hex(), refreshToken, refreshExp)
+	_ = services.SaveRefreshToken(c.Request.Context(), user.ID.Hex(), refreshToken)
 
 	c.JSON(http.StatusOK, gin.H{
 		"token":         accessToken,
@@ -280,6 +322,10 @@ func ValidateTokenHandler(c *gin.Context) {
 	if tokenString == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Token bulunamadı"})
 		return
+	}
+	// Bearer prefix temizle
+	if strings.HasPrefix(strings.ToLower(tokenString), "bearer ") {
+		tokenString = strings.TrimSpace(tokenString[7:])
 	}
 
 	claims := &Claims{}
@@ -323,7 +369,6 @@ func RefreshTokenHandler(c *gin.Context) {
 		return
 	}
 
-	// Yeni access token
 	accessExp := time.Now().Add(configs.GetJWTExpiry())
 	claims := &Claims{
 		UserID: userID,
@@ -336,9 +381,9 @@ func RefreshTokenHandler(c *gin.Context) {
 	accessJWT := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	newAccess, _ := accessJWT.SignedString(configs.GetJWTSecret())
 
-	// Eski access kayıtlarını temizlemek istersen (opsiyonel):
-	_ = services.DeleteAccessTokens(c.Request.Context(), userID)
-	_ = services.SaveAccessToken(c.Request.Context(), userID, newAccess, accessExp)
+	// Opsiyonel: eski refresh'leri temizleyip yenisini yaz
+	_ = services.DeleteRefreshTokens(c.Request.Context(), userID)
+	_ = services.SaveRefreshToken(c.Request.Context(), userID, primitive.NewObjectID().Hex())
 
 	c.JSON(http.StatusOK, gin.H{
 		"token":      newAccess,
@@ -354,44 +399,53 @@ func RefreshTokenHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Router /svc/auth/logout [post]
 func LogoutHandler(c *gin.Context) {
-	// AuthMiddleware'de c.Set("userID", claims.UserID) ve c.Set("username", claims.Username) olmalı
-	userID := c.GetString("userID")
-	username := c.GetString("username")
+	tokenString := c.GetHeader("Authorization")
+	if tokenString == "" {
+		tokenString, _ = c.Cookie("access_token")
+	}
+	if strings.HasPrefix(strings.ToLower(tokenString), "bearer ") {
+		tokenString = strings.TrimSpace(tokenString[7:])
+	}
 
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Kullanıcı bulunamadı"})
+	if tokenString == "" {
+		c.JSON(http.StatusOK, gin.H{"message": "Token bulunamadı, yine de çıkış yapıldı"})
 		return
 	}
 
-	// 1️⃣ Access + Refresh token kayıtlarını MongoDB'den sil
-	if err := services.DeleteRefreshTokens(c.Request.Context(), userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Refresh token silinemedi"})
-		return
-	}
-	if err := services.DeleteAccessTokens(c.Request.Context(), userID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Access token silinemedi"})
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return configs.GetJWTSecret(), nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusOK, gin.H{"message": "Token geçersiz, yine de çıkış yapıldı"})
 		return
 	}
 
-	// 2️⃣ CSRF token'ı bellekteki map'ten sil
+	userID := claims.UserID
+	username := claims.Username
+	email := claims.Email
+
+	_ = services.DeleteRefreshTokens(c.Request.Context(), userID)
+	_ = services.DeleteAccessTokens(c.Request.Context(), userID)
+
 	if username != "" {
 		middlewares.DeleteCSRFToken(username)
 	}
+	if email != "" {
+		middlewares.DeleteCSRFToken(email)
+	}
 
-	// 3️⃣ Başarılı yanıt dön
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Çıkış başarılı, tüm tokenlar temizlendi",
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Çıkış başarılı, tüm tokenlar temizlendi"})
 }
 
-// SendVerificationEmailHandler sends a verification email to the user
+// ------------------------------------------------------
 // @Summary Send verification email
-// @Description Sends a verification email to a specific user
-// @Tags Authentication
+// @Description Belirli kullanıcıya doğrulama e-postası gönderir
+// @Tags Auth
 // @Param userID path string true "User ID"
-// @Success 200 {object} map[string]interface{} "Verification email sent"
-// @Failure 400 {object} map[string]interface{} "Invalid user ID"
-// @Failure 500 {object} map[string]interface{} "Failed to send verification email"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
 // @Router /svc/auth/send-verification/{userID} [post]
 func SendVerificationEmailHandler(c *gin.Context) {
 	userID := c.Param("userID")
@@ -407,8 +461,20 @@ func SendVerificationEmailHandler(c *gin.Context) {
 		return
 	}
 
-	err = services.SendVerificationEmail(c.Request.Context(), objectID, token)
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
+	verificationLink := fmt.Sprintf("%s/verify-email?token=%s", frontendURL, token)
+	log.Printf("🔗 Doğrulama linki: %s", verificationLink)
+
+	_, err = services.GetUserByID(c.Request.Context(), objectID)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
+		return
+	}
+
+	if err := services.SendVerificationEmail(c.Request.Context(), objectID, verificationLink); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email", "details": err.Error()})
 		return
 	}
@@ -416,121 +482,266 @@ func SendVerificationEmailHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Verification email sent"})
 }
 
-// VerifyEmailHandler verifies a user's email
+// ------------------------------------------------------
 // @Summary Verify email
 // @Description Verifies a user's email using a token
-// @Tags Authentication
-// @Param token query string true "Verification token"
-// @Success 200 {object} map[string]interface{} "Email verified successfully"
-// @Failure 400 {object} map[string]interface{} "Invalid or expired token"
-// @Router /svc/auth/verify-email [get]
+// @Tags Auth
+// @Param token path string true "Verification token"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Router /svc/auth/verify-email/{token} [post]
 func VerifyEmailHandler(c *gin.Context) {
-	token := c.Query("token")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Token is required"})
+	raw := c.Param("token")
+	if raw == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token gerekli"})
 		return
 	}
 
-	err := services.VerifyEmailToken(c.Request.Context(), token)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// Eğer path parametreye yanlışlıkla tam URL gelirse, gerçek token'ı ayıkla
+	token := raw
+	if strings.Contains(raw, "://") {
+		if u, err := url.Parse(raw); err == nil {
+			if t := u.Query().Get("token"); t != "" {
+				token = t
+			}
+		}
+	}
+	// Bazı proxy’ler başa “/” ekleyebilir
+	token = strings.TrimPrefix(token, "/")
+
+	log.Printf("🔍 Email doğrulama token'ı: %s", token)
+
+	if err := services.VerifyEmailToken(c.Request.Context(), token); err != nil {
+		log.Printf("❌ Email doğrulama hatası: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token geçersiz veya süresi dolmuş"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Email verified successfully"})
+	log.Printf("✅ Email başarıyla doğrulandı")
+	c.JSON(http.StatusOK, gin.H{"message": "E-posta başarıyla doğrulandı. Yönetici onayından sonra giriş yapabileceksiniz."})
 }
 
-// RequestPasswordResetHandler handles password reset requests
+// ------------------------------------------------------
 // @Summary Request password reset
-// @Description Sends a password reset email to the user
-// @Tags Authentication
+// @Description Aktif kullanıcı için şifre sıfırlama e-postası gönderir
+// @Tags Auth
 // @Accept json
 // @Produce json
-// @Param email body models.RequestPasswordReset true "User email"
-// @Success 200 {object} map[string]interface{} "Password reset email sent"
-// @Failure 400 {object} map[string]interface{} "Invalid request payload"
-// @Failure 404 {object} map[string]interface{} "Email not found"
-// @Failure 500 {object} map[string]interface{} "Failed to send password reset email"
+// @Param body body models.RequestPasswordReset true "Email"
+// @Success 200 {object} map[string]string
 // @Router /svc/auth/request-password-reset [post]
 func RequestPasswordResetHandler(c *gin.Context) {
-	var request struct {
-		Email string `json:"email"`
-	}
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+	var req models.RequestPasswordReset
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("❌ JSON parse hatası: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek"})
 		return
 	}
+	// Güvenlik: Email'in var olup olmadığını söyleme
+	log.Printf("📧 Şifre sıfırlama isteği: %s", req.Email)
 
-	// Kullanıcıyı email ile bulun
-	userID, err := services.GetUserIDByEmail(c.Request.Context(), request.Email)
+	ctx := c.Request.Context()
+	user, err := services.GetUserByEmail(req.Email)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Email not found"})
+		// Güvenlik: Email'in varlığını belli etme
+		c.JSON(http.StatusOK, gin.H{"message": "Eğer e-posta kayıtlıysa, şifre sıfırlama bağlantısı gönderildi"})
 		return
 	}
 
-	// Reset token oluştur
-	token, err := services.GeneratePasswordResetToken(c.Request.Context(), userID)
+	// Sadece aktif kullanıcı (email doğrulanmış + admin onaylı) için gönder
+	if !user.IsEmailVerified || !user.IsApprovedByAdmin {
+		c.JSON(http.StatusOK, gin.H{"message": "Eğer e-posta kayıtlıysa, şifre sıfırlama bağlantısı gönderildi"})
+		return
+	}
+
+	token, err := generateResetToken()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate password reset token"})
+		log.Printf("❌ Token oluşturma hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token oluşturulamadı"})
 		return
 	}
 
-	resetURL := "http://localhost:8080/auth/reset-password?token=" + token
-	subject := "Password Reset Request"
-	body := "Click the link to reset your password: " + resetURL
-
-	err = services.SendEmail([]string{request.Email}, subject, body)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+	expiresAt := time.Now().Add(30 * time.Minute)
+	if err := services.CreatePasswordResetToken(ctx, req.Email, token, expiresAt); err != nil {
+		log.Printf("❌ Token kaydetme hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token kaydedilemedi"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Password reset email sent"})
+	log.Printf("✅ Token oluşturuldu: %s (expires: %s)", token, expiresAt.Format(time.RFC3339))
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
+	resetLink := fmt.Sprintf("%s/reset-password?token=%s", frontendURL, token)
+	log.Printf("🔗 Reset linki: %s", resetLink)
+
+	if err := services.SendPasswordResetEmail(user.Email, user.Username, resetLink); err != nil {
+		log.Printf("❌ E-posta gönderme hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "E-posta gönderilemedi"})
+		return
+	}
+
+	log.Printf("✅ Şifre sıfırlama e-postası gönderildi: %s", req.Email)
+	c.JSON(http.StatusOK, gin.H{"message": "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi"})
 }
 
-// ResetPasswordHandler resets a user's password
+// ------------------------------------------------------
 // @Summary Reset password
-// @Description Resets a user's password using a valid reset token
-// @Tags Authentication
+// @Description Token ile şifreyi sıfırlama
+// @Tags Auth
 // @Accept json
 // @Produce json
-// @Param token query string true "Password reset token"
-// @Param request body models.ResetPasswordRequest true "New password"
-// @Success 200 {object} map[string]interface{} "Password updated successfully"
-// @Failure 400 {object} map[string]interface{} "Invalid request payload or token"
-// @Failure 500 {object} map[string]interface{} "Failed to update password"
-// @Router /svc/auth/reset-password [post]
+// @Param body body models.ResetPasswordTokenRequest true "Token and new password"
+// @Success 200 {object} map[string]string
+// @Router /svc/auth/reset-password [post] @Description Reset password with token
 func ResetPasswordHandler(c *gin.Context) {
-	token := c.Query("token")
-	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Token is required"})
+	var req models.ResetPasswordTokenRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("❌ JSON parse hatası: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek"})
 		return
 	}
 
-	var request struct {
-		NewPassword string `json:"new_password"`
-	}
-	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-		return
-	}
-
-	// Token'ı doğrula
-	userID, err := services.VerifyPasswordResetToken(c.Request.Context(), token)
+	log.Printf("🔍 Token doğrulanıyor: %s", req.Token)
+	ctx := c.Request.Context()
+	email, err := services.ValidatePasswordResetToken(ctx, req.Token)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		log.Printf("❌ Token doğrulama hatası: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Token geçersiz veya süresi dolmuş"})
 		return
 	}
 
-	// Şifreyi güncelle
-	err = services.UpdateUserPassword(c.Request.Context(), userID, request.NewPassword)
+	log.Printf("✅ Token geçerli, kullanıcı: %s", email)
+
+	user, err := services.GetUserByEmail(email)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update password"})
+		log.Printf("❌ Kullanıcı bulunamadı: %v", err)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kullanıcı bulunamadı"})
 		return
 	}
 
-	// Token'ı sil
-	_ = services.DeletePasswordResetToken(c.Request.Context(), token)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("❌ Şifre hashleme hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Şifre güncellenemedi"})
+		return
+	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
+	update := bson.M{
+		"password": string(hashedPassword),
+	}
+	if _, err := services.UpdateUser(user.ID, update); err != nil {
+		log.Printf("❌ Kullanıcı güncelleme hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Şifre güncellenemedi"})
+		return
+	}
+	log.Printf("✅ Şifre hash'lendi")
+
+	if err := services.MarkPasswordResetTokenAsUsed(ctx, req.Token); err != nil {
+		log.Printf("⚠️ Token işaretleme hatası: %v", err)
+	}
+
+	log.Printf("✅ Şifre başarıyla güncellendi: %s", email)
+	c.JSON(http.StatusOK, gin.H{"message": "Şifre başarıyla güncellendi"})
+}
+
+// ------------------------------------------------------
+// @Summary Register new user
+// @Description Yeni kullanıcı kaydı ve doğrulama e-postası gönderimi
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body models.RegisterRequest true "Registration data"
+// @Success 201 {object} map[string]string
+// @Router /svc/auth/register [post]
+func RegisterHandler(c *gin.Context) {
+	var req models.RegisterRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("❌ JSON parse hatası: %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek: " + err.Error()})
+		return
+	}
+	log.Printf("📝 Yeni kayıt isteği: %s (%s) - Tel: %s", req.Username, req.Email, req.PhoneNumber)
+
+	// Benzersizlik kontrolleri
+	if existingUser, _ := services.GetUserByEmail(req.Email); existingUser.ID != primitive.NilObjectID {
+		c.JSON(http.StatusConflict, gin.H{"error": "Bu e-posta adresi zaten kullanılıyor"})
+		return
+	}
+	if existingUser, _ := services.GetUserByUsername(req.Username); existingUser.ID != primitive.NilObjectID {
+		c.JSON(http.StatusConflict, gin.H{"error": "Bu kullanıcı adı zaten kullanılıyor"})
+		return
+	}
+	if req.PhoneNumber != "" {
+		if existingUser, _ := services.GetUserByPhoneNumber(req.PhoneNumber); existingUser.ID != primitive.NilObjectID {
+			c.JSON(http.StatusConflict, gin.H{"error": "Bu telefon numarası zaten kullanılıyor"})
+			return
+		}
+	}
+
+	// Şifre hash
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Printf("❌ Şifre hashleme hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kayıt işlemi başarısız"})
+		return
+	}
+
+	// Kullanıcı oluştur
+	newUser := models.User{
+		Username:          req.Username,
+		Email:             req.Email,
+		Password:          string(hashedPassword),
+		Name:              req.FirstName,
+		Surname:           req.LastName,
+		FullName:          fmt.Sprintf("%s %s", req.FirstName, req.LastName),
+		PhoneNumber:       req.PhoneNumber,
+		Roles:             []string{},
+		IsEmailVerified:   false,
+		IsApprovedByAdmin: false,
+		PreferredLanguage: "tr",
+	}
+
+	result, err := services.CreateUser(newUser)
+	if err != nil {
+		log.Printf("❌ Kullanıcı kaydetme hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kayıt işlemi başarısız"})
+		return
+	}
+	userID := result.InsertedID.(primitive.ObjectID)
+	log.Printf("✅ Kullanıcı oluşturuldu: %s (ID: %s)", newUser.Username, userID.Hex())
+
+	// Email doğrulama token'ı ve mail
+	verificationToken, err := services.GenerateEmailVerificationToken(userID)
+	if err != nil {
+		log.Printf("⚠️ Email doğrulama token'ı oluşturulamadı: %v", err)
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Kayıt başarılı ancak doğrulama e-postası gönderilemedi",
+			"user_id": userID.Hex(),
+		})
+		return
+	}
+
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
+	verificationLink := fmt.Sprintf("%s/verify-email?token=%s", frontendURL, verificationToken)
+	log.Printf("🔗 Doğrulama linki: %s", verificationLink)
+
+	if err := services.SendVerificationEmail(c.Request.Context(), userID, verificationToken); err != nil {
+		log.Printf("❌ E-posta gönderme hatası: %v", err)
+		c.JSON(http.StatusCreated, gin.H{
+			"message": "Kayıt başarılı ancak doğrulama e-postası gönderilemedi",
+			"user_id": userID.Hex(),
+		})
+		return
+	}
+
+	log.Printf("✅ Doğrulama e-postası gönderildi: %s", newUser.Email)
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Kayıt başarılı! E-posta adresinize doğrulama bağlantısı gönderildi.",
+		"user_id": userID.Hex(),
+	})
 }

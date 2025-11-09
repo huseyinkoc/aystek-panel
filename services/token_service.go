@@ -1,8 +1,10 @@
 package services
 
 import (
+	"admin-panel/configs"
 	"admin-panel/models"
 	"context"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -16,7 +18,11 @@ var (
 
 // Main.go’dan: services.InitTokenService(configs.DB) çağrılmalı
 func InitTokenService(client *mongo.Client) {
-	db := client.Database("admin_panel") // istersen .env ile dinamikleştir
+	dbName := os.Getenv("MONGO_DBNAME")
+	if dbName == "" {
+		dbName = "admin_panel"
+	}
+	db := client.Database(dbName) // istersen .env ile dinamikleştir
 	accessTokenCollection = db.Collection("access_tokens")
 	refreshTokenCollection = db.Collection("refresh_tokens")
 }
@@ -54,11 +60,11 @@ func DeleteAccessTokens(ctx context.Context, userID string) error {
 
 // ---------- REFRESH TOKEN ----------
 
-func SaveRefreshToken(ctx context.Context, userID, token string, expiresAt time.Time) error {
+func SaveRefreshToken(ctx context.Context, userID, token string) error {
 	doc := models.RefreshToken{
 		UserID:    userID,
 		Token:     token,
-		ExpiresAt: expiresAt,
+		ExpiresAt: time.Now().Add(configs.GetRefreshExpiry()),
 		CreatedAt: time.Now(),
 	}
 	_, err := refreshTokenCollection.InsertOne(ctx, doc)

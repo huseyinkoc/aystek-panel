@@ -7,17 +7,33 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// 🔹 Role + Permission Routes
 func RoleRoutes(router *gin.Engine) {
-	roles := router.Group("/admin/roles")
-	roles.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
-	// Yetkilendirme middleware'i
-	roles.Use(middlewares.AuthMiddleware())
-	roles.Use(middlewares.AuthorizeRolesMiddleware("admin")) // Rolleri yalnızca admin yönetebilir
+	roles := router.Group("/svc/roles")
+	roles.Use(
+		middlewares.MaintenanceMiddleware(), // Bakım modu kontrolü
+		middlewares.AuthMiddleware(),        // JWT doğrulama
+	)
+
 	{
-		// Rollere yönelik CRUD işlemleri
-		roles.POST("/create", middlewares.CSRFMiddleware(), controllers.CreateRoleHandler) // Yeni rol oluşturma
-		roles.GET("/", controllers.GetAllRolesHandler)                                     // Tüm rolleri listeleme
-		roles.PUT("/:id", middlewares.CSRFMiddleware(), controllers.UpdateRoleHandler)     // Rol güncelleme
-		roles.DELETE("/:id", middlewares.CSRFMiddleware(), controllers.DeleteRoleHandler)  // Rol silme
+		// 🔸 Role CRUD işlemleri
+		roles.POST("/create", middlewares.AuthorizeRolesMiddleware("admin"), controllers.CreateRoleHandler)
+		roles.GET("/", middlewares.AuthorizeRolesMiddleware("admin"), controllers.GetAllRolesHandler)
+		roles.PUT("/:id", middlewares.AuthorizeRolesMiddleware("admin"), controllers.UpdateRoleHandler)
+		roles.DELETE("/:id", middlewares.AuthorizeRolesMiddleware("admin"), controllers.DeleteRoleHandler)
+	}
+
+	// 🔹 Permission modülleri (dinamik olarak MongoDB'den yönetilir)
+	permissions := router.Group("/svc/permissions")
+	permissions.Use(
+		middlewares.MaintenanceMiddleware(),
+		middlewares.AuthMiddleware(),
+		middlewares.AuthorizeRolesMiddleware("admin"), // Sadece admin izin modüllerini yönetebilir
+	)
+	{
+		permissions.GET("/", controllers.GetPermissionModules)         // Modül listesini getir
+		permissions.POST("/", controllers.CreatePermissionModule)      // Yeni modül oluştur
+		permissions.PUT("/:id", controllers.UpdatePermissionModule)    // Modül güncelle
+		permissions.DELETE("/:id", controllers.DeletePermissionModule) // Modül sil
 	}
 }

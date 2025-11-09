@@ -27,23 +27,21 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Missing Authorization header"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Authorization header eksik"})
 			return
 		}
-
-		// "Bearer <token>" formatını kontrol et
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || strings.ToLower(parts[0]) != "bearer" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid Authorization format"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz Authorization formatı"})
 			return
 		}
 		tokenString := parts[1]
 
 		// Token'ı çözümle ve doğrula
 		claims := &Claims{}
-		_, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+		_, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return configs.GetJWTSecret(), nil
-		}, jwt.WithLeeway(5))
+		})
 
 		if err != nil {
 			// JWT v5 hata yönetimi

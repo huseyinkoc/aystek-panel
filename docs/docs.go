@@ -53,6 +53,89 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/users/{id}/approve": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Approve user by admin (only if email is verified)",
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Approve user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/users/{id}/roles": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Assign roles to user",
+                "tags": [
+                    "Users"
+                ],
+                "summary": "Assign roles",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Roles",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/categories": {
             "get": {
                 "description": "Retrieve all categories with their details",
@@ -2358,34 +2441,6 @@ const docTemplate = `{
             }
         },
         "/roles": {
-            "get": {
-                "description": "Retrieve all roles with their permissions and details",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Roles"
-                ],
-                "summary": "Get all roles",
-                "responses": {
-                    "200": {
-                        "description": "List of roles",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/models.Role"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to retrieve roles",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
             "post": {
                 "description": "Add a new role with its permissions and details",
                 "consumes": [
@@ -2441,6 +2496,45 @@ const docTemplate = `{
             }
         },
         "/roles/{id}": {
+            "get": {
+                "description": "Retrieve a role with its permissions and details by its unique identifier",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Get a role by ID",
+                "responses": {
+                    "200": {
+                        "description": "Role details",
+                        "schema": {
+                            "$ref": "#/definitions/models.Role"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid role ID",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Role not found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve role",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
             "put": {
                 "description": "Update role details, including permissions",
                 "consumes": [
@@ -2970,9 +3064,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/svc/auth/request-password-reset": {
+        "/svc/auth/register": {
             "post": {
-                "description": "Sends a password reset email to the user",
+                "description": "Yeni kullanıcı kaydı ve doğrulama e-postası gönderimi",
                 "consumes": [
                     "application/json"
                 ],
@@ -2980,13 +3074,50 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Authentication"
+                    "Auth"
+                ],
+                "summary": "Register new user",
+                "parameters": [
+                    {
+                        "description": "Registration data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/models.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/svc/auth/request-password-reset": {
+            "post": {
+                "description": "Aktif kullanıcı için şifre sıfırlama e-postası gönderir",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
                 ],
                 "summary": "Request password reset",
                 "parameters": [
                     {
-                        "description": "User email",
-                        "name": "email",
+                        "description": "Email",
+                        "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -2996,31 +3127,12 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Password reset email sent",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request payload",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Email not found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to send password reset email",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -3028,7 +3140,7 @@ const docTemplate = `{
         },
         "/svc/auth/reset-password": {
             "post": {
-                "description": "Resets a user's password using a valid reset token",
+                "description": "Token ile şifreyi sıfırlama",
                 "consumes": [
                     "application/json"
                 ],
@@ -3036,47 +3148,28 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Authentication"
+                    "Auth"
                 ],
                 "summary": "Reset password",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Password reset token",
-                        "name": "token",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "New password",
-                        "name": "request",
+                        "description": "Token and new password",
+                        "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.ResetPasswordRequest"
+                            "$ref": "#/definitions/models.ResetPasswordTokenRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Password updated successfully",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request payload or token",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Failed to update password",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     }
                 }
@@ -3084,9 +3177,9 @@ const docTemplate = `{
         },
         "/svc/auth/send-verification/{userID}": {
             "post": {
-                "description": "Sends a verification email to a specific user",
+                "description": "Belirli kullanıcıya doğrulama e-postası gönderir",
                 "tags": [
-                    "Authentication"
+                    "Auth"
                 ],
                 "summary": "Send verification email",
                 "parameters": [
@@ -3100,21 +3193,21 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Verification email sent",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Invalid user ID",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "500": {
-                        "description": "Failed to send verification email",
+                        "description": "Internal Server Error",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -3163,11 +3256,11 @@ const docTemplate = `{
                 }
             }
         },
-        "/svc/auth/verify-email": {
-            "get": {
+        "/svc/auth/verify-email/{token}": {
+            "post": {
                 "description": "Verifies a user's email using a token",
                 "tags": [
-                    "Authentication"
+                    "Auth"
                 ],
                 "summary": "Verify email",
                 "parameters": [
@@ -3175,20 +3268,20 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Verification token",
                         "name": "token",
-                        "in": "query",
+                        "in": "path",
                         "required": true
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Email verified successfully",
+                        "description": "OK",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
                         }
                     },
                     "400": {
-                        "description": "Invalid or expired token",
+                        "description": "Bad Request",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -3453,6 +3546,36 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Failed to delete menu",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/svc/roles": {
+            "get": {
+                "description": "Retrieve all roles with their permissions and details",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Roles"
+                ],
+                "summary": "Get all roles",
+                "responses": {
+                    "200": {
+                        "description": "List of roles",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/models.Role"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed to retrieve roles",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -4423,6 +4546,22 @@ const docTemplate = `{
         "models.Page": {
             "type": "object"
         },
+        "models.Permission": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "description": "Örn: [\"read\", \"write\", \"approve\"]",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "module": {
+                    "description": "Örn: \"users\"",
+                    "type": "string"
+                }
+            }
+        },
         "models.Plugin": {
             "type": "object"
         },
@@ -4495,21 +4634,65 @@ const docTemplate = `{
                 }
             }
         },
-        "models.RequestPasswordReset": {
+        "models.RegisterRequest": {
             "type": "object",
+            "required": [
+                "email",
+                "first_name",
+                "last_name",
+                "password",
+                "phone_number",
+                "username"
+            ],
             "properties": {
                 "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                },
+                "password": {
                     "type": "string",
-                    "example": "abc@mail.com"
+                    "minLength": 6
+                },
+                "phone_number": {
+                    "description": "YENİ",
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 30,
+                    "minLength": 3
                 }
             }
         },
-        "models.ResetPasswordRequest": {
+        "models.RequestPasswordReset": {
             "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.ResetPasswordTokenRequest": {
+            "type": "object",
+            "required": [
+                "new_password",
+                "token"
+            ],
             "properties": {
                 "new_password": {
                     "type": "string",
-                    "example": "newpassword123"
+                    "minLength": 6
+                },
+                "token": {
+                    "type": "string"
                 }
             }
         },
@@ -4517,33 +4700,33 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "created_at": {
-                    "description": "Oluşturulma tarihi",
                     "type": "string"
                 },
                 "created_by": {
-                    "description": "Rolü oluşturan kullanıcı",
+                    "type": "string"
+                },
+                "description": {
                     "type": "string"
                 },
                 "id": {
-                    "description": "Rol ID'si (örn: \"admin\")",
+                    "type": "string"
+                },
+                "is_system": {
+                    "type": "boolean"
+                },
+                "name": {
                     "type": "string"
                 },
                 "permissions": {
-                    "description": "Modül bazlı izinler",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/models.Permission"
                     }
                 },
                 "updated_at": {
-                    "description": "Güncellenme tarihi",
                     "type": "string"
                 },
                 "updated_by": {
-                    "description": "Rolü güncelleyen son kullanıcı",
                     "type": "string"
                 }
             }
@@ -4591,24 +4774,29 @@ const docTemplate = `{
             "required": [
                 "email",
                 "name",
-                "password",
-                "roles",
                 "surname",
                 "username"
             ],
             "properties": {
+                "created_at": {
+                    "type": "string"
+                },
                 "email": {
                     "type": "string"
                 },
                 "full_name": {
-                    "description": "Otomatik oluşturulan tam ad",
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
                 },
+                "is_approved_by_admin": {
+                    "type": "boolean"
+                },
+                "is_email_verified": {
+                    "type": "boolean"
+                },
                 "name": {
-                    "description": "Kullanıcının adı",
                     "type": "string"
                 },
                 "password": {
@@ -4618,18 +4806,18 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "preferred_language": {
-                    "description": "Kullanıcı tercihi",
                     "type": "string"
                 },
                 "roles": {
-                    "description": "[\"admin\", \"editor\", \"user\"]",
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
                 },
                 "surname": {
-                    "description": "Kullanıcının soyadı",
+                    "type": "string"
+                },
+                "updated_at": {
                     "type": "string"
                 },
                 "username": {

@@ -25,6 +25,9 @@ func CreateUser(user models.User) (*mongo.InsertOneResult, error) {
 	defer cancel()
 
 	user.ID = primitive.NewObjectID()
+	user.CreatedAt = time.Now()
+	user.UpdatedAt = time.Now()
+
 	return userCollection.InsertOne(ctx, user)
 }
 
@@ -111,12 +114,13 @@ func GetUserByEmail(email string) (models.User, error) {
 	return user, nil
 }
 
-func GetUserByPhone(phone string) (models.User, error) {
+// GetUserByPhoneNumber retrieves a user by phone number
+func GetUserByPhoneNumber(phoneNumber string) (models.User, error) {
 	var user models.User
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	err := userCollection.FindOne(ctx, bson.M{"phone_number": phone}).Decode(&user)
+	err := userCollection.FindOne(ctx, bson.M{"phone_number": phoneNumber}).Decode(&user)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return user, errors.New("user not found")
@@ -227,4 +231,31 @@ func IsLanguageEnabled(languageCode string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+// GetUserByID retrieves a user by ID
+func GetUserByID(ctx context.Context, userID primitive.ObjectID) (*models.User, error) {
+	var user models.User
+	err := userCollection.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, errors.New("user not found")
+		}
+		return nil, err
+	}
+	return &user, nil
+}
+
+func ApproveUserByAdmin(ctx context.Context, id primitive.ObjectID) error {
+	update := bson.M{
+		"$set": bson.M{
+			"is_approved_by_admin": true,
+			"updated_at":           time.Now(),
+		},
+	}
+	_, err := userCollection.UpdateOne(ctx, bson.M{"_id": id, "is_email_verified": true}, update)
+	if err != nil {
+		return err
+	}
+	return nil
 }

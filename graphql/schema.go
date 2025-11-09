@@ -3,9 +3,11 @@ package graphql
 import (
 	"admin-panel/services"
 	"context"
+	"fmt"
 
 	"github.com/graphql-go/graphql"
 	gql "github.com/graphql-go/graphql"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // RoleType defines the GraphQL schema for a role
@@ -63,11 +65,17 @@ var RootQuery = gql.NewObject(gql.ObjectConfig{
 			},
 			Resolve: func(p gql.ResolveParams) (interface{}, error) {
 				roleID, ok := p.Args["id"].(string)
-				if !ok {
+				if !ok || roleID == "" {
 					return nil, nil
 				}
+
+				oid, err := primitive.ObjectIDFromHex(roleID)
+				if err != nil {
+					return nil, fmt.Errorf("invalid role id: %w", err)
+				}
+
 				ctx := context.Background()
-				return services.GetRoleByID(ctx, roleID)
+				return services.GetRoleByID(ctx, oid)
 			},
 		},
 	},

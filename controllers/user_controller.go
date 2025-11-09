@@ -4,7 +4,9 @@ import (
 	"admin-panel/models"
 	"admin-panel/services"
 	"fmt"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -215,4 +217,87 @@ func UpdatePreferredLanguageHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Preferred language updated successfully"})
+}
+
+// ApproveUserHandler approves a user by admin
+// @Summary Approve user
+// @Description Approve user by admin (only if email is verified)
+// @Tags Users
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]string
+// @Router /admin/users/{id}/approve [patch]
+func ApproveUserHandler(c *gin.Context) {
+	userID := c.Param("id")
+
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kullanıcı ID"})
+		return
+	}
+
+	// Kullanıcıyı getir
+	user, err := services.GetUserByID(c.Request.Context(), objID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Kullanıcı bulunamadı"})
+		return
+	}
+
+	// E-posta doğrulaması yapılmadıysa onaylama
+	if !user.IsEmailVerified {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Kullanıcının e-posta doğrulaması yapılmamış"})
+		return
+	}
+
+	// Yönetici onayını gerçekleştir
+	err = services.ApproveUserByAdmin(c.Request.Context(), objID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kullanıcı onaylanamadı"})
+		return
+	}
+
+	log.Printf("✅ Kullanıcı onaylandı: %s", userID)
+	c.JSON(http.StatusOK, gin.H{"message": "Kullanıcı başarıyla onaylandı"})
+}
+
+// AssignRolesHandler assigns roles to a user
+// @Summary Assign roles
+// @Description Assign roles to user
+// @Tags Users
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Param body body map[string][]string true "Roles"
+// @Success 200 {object} map[string]string
+// @Router /admin/users/{id}/roles [patch]
+func AssignRolesHandler(c *gin.Context) {
+	userID := c.Param("id")
+
+	var req struct {
+		Roles []string `json:"roles" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek"})
+		return
+	}
+
+	objID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kullanıcı ID"})
+		return
+	}
+
+	update := primitive.M{
+		"roles":      req.Roles,
+		"updated_at": time.Now(),
+	}
+
+	_, err = services.UpdateUser(objID, update)
+	if err != nil {
+		log.Printf("❌ Rol atama hatası: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rol atanamadı"})
+		return
+	}
+
+	log.Printf("✅ Roller atandı: %s -> %v", userID, req.Roles)
+	c.JSON(http.StatusOK, gin.H{"message": "Roller başarıyla atandı"})
 }

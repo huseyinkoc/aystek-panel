@@ -3,9 +3,6 @@ package services
 import (
 	"admin-panel/models"
 	"context"
-	"crypto/rand"
-	"encoding/hex"
-	"errors"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,56 +12,58 @@ import (
 
 var passwordResetCollection *mongo.Collection
 
+// InitPasswordResetService - diğer servislerle aynı imza
 func InitPasswordResetService(client *mongo.Client) {
-	passwordResetCollection = client.Database("admin_panel").Collection("password_resets")
+	passwordResetCollection = client.Database("admin_panel").Collection("password_reset_tokens")
 }
 
-func GeneratePasswordResetToken(ctx context.Context, userID primitive.ObjectID) (string, error) {
-	// Rastgele token oluştur
-	tokenBytes := make([]byte, 16)
-	if _, err := rand.Read(tokenBytes); err != nil {
-		return "", err
-	}
-	token := hex.EncodeToString(tokenBytes)
-
-	// Token'ı kaydet
+// Token oluştur ve kaydet
+func CreatePasswordResetToken(ctx context.Context, email string, token string, expiresAt time.Time) error {
 	resetToken := models.PasswordResetToken{
 		ID:        primitive.NewObjectID(),
-		UserID:    userID,
+		Email:     email,
 		Token:     token,
-		ExpiresAt: time.Now().Add(1 * time.Hour),
+		ExpiresAt: expiresAt,
+		Used:      false,
 		CreatedAt: time.Now(),
 	}
 
 	_, err := passwordResetCollection.InsertOne(ctx, resetToken)
+	return err
+}
+
+// Token'ı doğrula
+func ValidatePasswordResetToken(ctx context.Context, token string) (string, error) {
+	var resetToken models.PasswordResetToken
+
+	err := passwordResetCollection.FindOne(ctx, bson.M{
+		"token":      token,
+		"used":       false,
+		"expires_at": bson.M{"$gt": time.Now()},
+	}).Decode(&resetToken)
+
 	if err != nil {
 		return "", err
 	}
 
-	return token, nil
+	return resetToken.Email, nil
 }
 
-func VerifyPasswordResetToken(ctx context.Context, token string) (primitive.ObjectID, error) {
-	// Token'ı bul
-	var resetToken models.PasswordResetToken
-	err := passwordResetCollection.FindOne(ctx, bson.M{"token": token}).Decode(&resetToken)
-	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return primitive.NilObjectID, errors.New("invalid or expired token")
-		}
-		return primitive.NilObjectID, err
-	}
+// Token'ı kullanıldı olarak işaretle
+func MarkPasswordResetTokenAsUsed(ctx context.Context, token string) error {
+	_, err := passwordResetCollection.UpdateOne(
+		ctx,
+		bson.M{"token": token},
+		bson.M{"$set": bson.M{"used": true, "used_at": time.Now()}},
 
-	// Süresini kontrol et
-	if time.Now().After(resetToken.ExpiresAt) {
-		return primitive.NilObjectID, errors.New("token expired")
-	}
-
-	// Kullanıcı ID'sini döndür
-	return resetToken.UserID, nil
+	)
+	return err
 }
 
-func DeletePasswordResetToken(ctx context.Context, token string) error {
-	_, err := passwordResetCollection.DeleteOne(ctx, bson.M{"token": token})
+// Süresi dolmuş tokenları temizle
+func CleanupExpiredPasswordResetTokens(ctx context.Context) error {
+	_, err := passwordResetCollection.DeleteMany(ctx, bson.M{
+		"expires_at": bson.M{"$lt": time.Now()},
+	})
 	return err
 }

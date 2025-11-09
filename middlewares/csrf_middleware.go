@@ -25,7 +25,12 @@ func GenerateCSRFToken() (string, error) {
 // CSRF token doğrulama ve geçerliyse yenisini oluşturma
 func ValidateCSRFToken(username, csrfToken string) bool {
 	value, ok := csrfTokens.Load(username)
-	if !ok || value != csrfToken {
+	if !ok {
+		return false
+	}
+	// safe type assert
+	stored, ok := value.(string)
+	if !ok || stored != csrfToken {
 		return false
 	}
 
@@ -64,18 +69,26 @@ func CSRFMiddleware() gin.HandlerFunc {
 			c.Request.Method == http.MethodPut ||
 			c.Request.Method == http.MethodDelete {
 
-			username := c.GetString("username") // Kullanıcı bilgisi middleware’den alınır
-			csrfToken := c.GetHeader("X-CSRF-Token")
+			username := c.GetString("username") // Auth middleware'den gelmeli
+			if username == "" {
+				// Auth bilgisi eksik -> önce AuthMiddleware çalıştırılmalı
+				c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthenticated"})
+				c.Abort()
+				return
+			}
 
+			csrfToken := c.GetHeader("X-CSRF-Token")
 			if csrfToken == "" || !ValidateCSRFToken(username, csrfToken) {
 				c.JSON(http.StatusForbidden, gin.H{"error": "Invalid or missing CSRF token"})
 				c.Abort()
 				return
 			}
 
-			// Doğrulama başarılıysa yeni token'ı header'a ekle
-			if newToken, ok := csrfTokens.Load(username); ok {
-				c.Writer.Header().Set("X-CSRF-Token", newToken.(string))
+			// Doğrulama başarılıysa yeni token'ı header'a ekle (type assert)
+			if newVal, ok := csrfTokens.Load(username); ok {
+				if newToken, ok2 := newVal.(string); ok2 {
+					c.Writer.Header().Set("X-CSRF-Token", newToken)
+				}
 			}
 		}
 

@@ -8,15 +8,44 @@ import (
 )
 
 func UserRoutes(router *gin.Engine) {
-	users := router.Group("/admin/users")
-	users.Use(middlewares.MaintenanceMiddleware())           // Bakım modu kontrolü
-	users.Use(middlewares.AuthMiddleware())                  // JWT Middleware
-	users.Use(middlewares.AuthorizeRolesMiddleware("admin")) // Sadece adminler erişebilir
+	users := router.Group("/svc/users")
+	users.Use(middlewares.MaintenanceMiddleware(), middlewares.AuthMiddleware())
 	{
-		users.POST("/create", middlewares.CSRFMiddleware(), controllers.CreateUserHandler)
-		users.GET("/", controllers.GetAllUsersHandler)
-		users.PUT("/:id", middlewares.CSRFMiddleware(), controllers.UpdateUserHandler)
-		users.DELETE("/:id", middlewares.CSRFMiddleware(), controllers.DeleteUserHandler)
-		users.PUT("/preferred-language", controllers.UpdatePreferredLanguageHandler) // Kullanıcı dil tercihi
+		// Tüm form işlemleri CSRF korumalı
+		users.POST("/create",
+			middlewares.AuthorizeRolesMiddleware("admin"),
+			middlewares.CSRFMiddleware(),
+			controllers.CreateUserHandler,
+		)
+		users.GET("/",
+			middlewares.AuthorizeRolesMiddleware("admin"),
+			controllers.GetAllUsersHandler,
+		)
+		users.PUT("/:id",
+			middlewares.AuthorizeRolesMiddleware("admin"),
+			middlewares.CSRFMiddleware(),
+			controllers.UpdateUserHandler,
+		)
+		users.DELETE("/:id",
+			middlewares.AuthorizeRolesMiddleware("admin"),
+			middlewares.CSRFMiddleware(),
+			controllers.DeleteUserHandler,
+		)
+		users.PATCH("/:id/approve",
+			middlewares.AuthorizeRolesMiddleware("admin"),
+			middlewares.CSRFMiddleware(),
+			controllers.ApproveUserHandler,
+		)
+		users.PATCH("/:id/roles",
+			middlewares.AuthorizeRolesMiddleware("admin"),
+			middlewares.CSRFMiddleware(),
+			controllers.AssignRolesHandler,
+		)
+
+		// Dil güncelleme CSRF korumalı
+		users.PUT("/preferred-language",
+			middlewares.CSRFMiddleware(),
+			controllers.UpdatePreferredLanguageHandler,
+		)
 	}
 }

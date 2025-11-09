@@ -3,11 +3,11 @@ package controllers
 import (
 	"admin-panel/models"
 	"admin-panel/services"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // CreateRoleHandler creates a new role
@@ -24,31 +24,30 @@ import (
 // @Router /roles [post]
 func CreateRoleHandler(c *gin.Context) {
 	var role models.Role
-
 	if err := c.ShouldBindJSON(&role); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
 
-	// Kimin oluşturduğunu al
-	createdBy, exists := c.Get("username")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized A2"})
-		return
-	}
-	role.CreatedBy = createdBy.(string)
-	role.UpdatedBy = createdBy.(string)
+	role.ID = primitive.NewObjectID()
 	role.CreatedAt = time.Now()
 	role.UpdatedAt = time.Now()
 
-	// Veritabanına ekle
-	_, err := services.CreateRole(c.Request.Context(), role)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create role"})
+	// Role içindeki izinlerin ID olarak geldiğini varsay
+	if len(role.Permissions) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Permissions required"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Role created successfully", "role": role})
+	if _, err := rolesCollection.InsertOne(c, role); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save role"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "Role created successfully",
+		"id":      role.ID.Hex(),
+	})
 }
 
 // GetAllRolesHandler retrieves all roles
@@ -58,16 +57,14 @@ func CreateRoleHandler(c *gin.Context) {
 // @Produce json
 // @Success 200 {array} models.Role "List of roles"
 // @Failure 500 {object} map[string]interface{} "Failed to retrieve roles"
-// @Router /roles [get]
+// @Router /svc/roles [get]
 func GetAllRolesHandler(c *gin.Context) {
 	roles, err := services.GetAllRoles(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve roles"})
-		fmt.Println("Database error during role retrieval:", err)
 		return
 	}
-
-	c.JSON(http.StatusOK, roles)
+	c.JSON(http.StatusOK, gin.H{"roles": roles})
 }
 
 // UpdateRoleHandler updates an existing role
@@ -86,29 +83,24 @@ func GetAllRolesHandler(c *gin.Context) {
 // @Router /roles/{id} [put]
 func UpdateRoleHandler(c *gin.Context) {
 	id := c.Param("id")
-
-	var update map[string]interface{}
-	if err := c.ShouldBindJSON(&update); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
-		return
-	}
-
-	updatedBy, exists := c.Get("username")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
-	update["updated_by"] = updatedBy.(string)
-	update["updated_at"] = time.Now()
-
-	updatedCount, err := services.UpdateRole(c.Request.Context(), id, update)
+	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update role"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
-	if updatedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
+	var role models.Role
+	if err := c.ShouldBindJSON(&role); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+		return
+	}
+
+	username, _ := c.Get("username")
+	role.UpdatedBy = username.(string)
+	role.UpdatedAt = time.Now()
+
+	if err := services.UpdateRole(c.Request.Context(), oid, role); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update role"})
 		return
 	}
 
@@ -127,17 +119,42 @@ func UpdateRoleHandler(c *gin.Context) {
 // @Router /roles/{id} [delete]
 func DeleteRoleHandler(c *gin.Context) {
 	id := c.Param("id")
-
-	deletedCount, err := services.DeleteRole(c.Request.Context(), id)
+	oid, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	if err := services.DeleteRole(c.Request.Context(), oid); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete role"})
 		return
 	}
 
-	if deletedCount == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
+	c.JSON(http.StatusOK, gin.H{"message": "Role deleted successfully"})
+}
+
+// GetRoleHandler retrieves a role by its ID
+// @Summary Get a role by ID
+// @Description Retrieve a role with its permissions and details by its unique identifier
+// @Tags Roles
+// @Produce json
+// @Success 200 {object} models.Role "Role details"
+// @Failure 400 {object} map[string]interface{} "Invalid role ID"
+// @Failure 404 {object} map[string]interface{} "Role not found"
+// @Failure 500 {object} map[string]interface{} "Failed to retrieve role"
+// @Router /roles/{id} [get]
+func GetRoleHandler(c *gin.Context) {
+	id := c.Param("id")
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid role ID"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Role deleted successfully"})
+	role, err := services.GetRoleByID(c.Request.Context(), oid)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"role": role})
 }

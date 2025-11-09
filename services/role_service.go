@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -17,13 +18,18 @@ func InitRolesService(client *mongo.Client) {
 }
 
 // GetRolePermissions fetches permissions for a specific role and module
-func GetRolePermissions(ctx context.Context, role string, module string) ([]string, error) {
+func GetRolePermissions(ctx context.Context, roleID string, module string) ([]string, error) {
 	var roleData struct {
 		Permissions map[string][]string `bson:"permissions"`
 	}
 
-	filter := bson.M{"_id": role}
-	err := rolesCollection.FindOne(ctx, filter).Decode(&roleData)
+	oid, err := primitive.ObjectIDFromHex(roleID)
+	if err != nil {
+		return nil, err
+	}
+
+	filter := bson.M{"_id": oid}
+	err = rolesCollection.FindOne(ctx, filter).Decode(&roleData)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, errors.New("role not found")
@@ -41,16 +47,23 @@ func GetRolePermissions(ctx context.Context, role string, module string) ([]stri
 
 // CreateRole creates a new role
 func CreateRole(ctx context.Context, role models.Role) (*mongo.InsertOneResult, error) {
+	if role.ID.IsZero() {
+		role.ID = primitive.NewObjectID()
+	}
 	role.CreatedAt = time.Now()
 	role.UpdatedAt = time.Now()
-
 	return rolesCollection.InsertOne(ctx, role)
 }
 
 // ReadRole fetches a role by its ID
 func ReadRole(ctx context.Context, roleID string) (*models.Role, error) {
+	oid, err := primitive.ObjectIDFromHex(roleID)
+	if err != nil {
+		return nil, err
+	}
+
 	var role models.Role
-	err := rolesCollection.FindOne(ctx, bson.M{"_id": roleID}).Decode(&role)
+	err = rolesCollection.FindOne(ctx, bson.M{"_id": oid}).Decode(&role)
 	if err != nil {
 		return nil, err
 	}
@@ -58,30 +71,25 @@ func ReadRole(ctx context.Context, roleID string) (*models.Role, error) {
 }
 
 // UpdateRole updates a role by its ID
-func UpdateRole(ctx context.Context, roleID string, update map[string]interface{}) (int64, error) {
-	// Güncelleme işlemi
-	filter := bson.M{"_id": roleID}
-	updateData := bson.M{"$set": update}
-
-	result, err := rolesCollection.UpdateOne(ctx, filter, updateData)
-	if err != nil {
-		return 0, err
+func UpdateRole(ctx context.Context, id primitive.ObjectID, role models.Role) error {
+	update := bson.M{
+		"$set": bson.M{
+			"name":        role.Name,
+			"description": role.Description,
+			"permissions": role.Permissions,
+			"is_system":   role.IsSystem,
+			"updated_by":  role.UpdatedBy,
+			"updated_at":  time.Now(),
+		},
 	}
-
-	return result.ModifiedCount, nil
+	_, err := rolesCollection.UpdateByID(ctx, id, update)
+	return err
 }
 
 // DeleteRole deletes a role by its ID
-func DeleteRole(ctx context.Context, roleID string) (int64, error) {
-	// Silme işlemi
-	filter := bson.M{"_id": roleID}
-
-	result, err := rolesCollection.DeleteOne(ctx, filter)
-	if err != nil {
-		return 0, err
-	}
-
-	return result.DeletedCount, nil
+func DeleteRole(ctx context.Context, id primitive.ObjectID) error {
+	_, err := rolesCollection.DeleteOne(ctx, bson.M{"_id": id})
+	return err
 }
 
 // GetAllRoles retrieves all roles
@@ -93,22 +101,41 @@ func GetAllRoles(ctx context.Context) ([]models.Role, error) {
 	defer cursor.Close(ctx)
 
 	var roles []models.Role
-	for cursor.Next(ctx) {
-		var role models.Role
-		if err := cursor.Decode(&role); err != nil {
-			return nil, err
-		}
-		roles = append(roles, role)
+	if err := cursor.All(ctx, &roles); err != nil {
+		return nil, err
 	}
-
 	return roles, nil
 }
 
-func GetRoleByID(ctx context.Context, roleID string) (*models.Role, error) {
+func GetRoleByID(ctx context.Context, id primitive.ObjectID) (*models.Role, error) {
 	var role models.Role
-	err := rolesCollection.FindOne(ctx, bson.M{"_id": roleID}).Decode(&role)
+	err := rolesCollection.FindOne(ctx, bson.M{"_id": id}).Decode(&role)
 	if err != nil {
 		return nil, err
 	}
 	return &role, nil
+}
+
+// ✅ Rolleri izin detaylarıyla birlikte getir
+func GetAllRolesWithPermissions(ctx context.Context) ([]bson.M, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$lookup", Value: bson.M{
+			"from":         "permissions",
+			"localField":   "permissions",
+			"foreignField": "_id",
+			"as":           "permission_details",
+		}}},
+	}
+
+	cursor, err := rolesCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var roles []bson.M
+	if err := cursor.All(ctx, &roles); err != nil {
+		return nil, err
+	}
+	return roles, nil
 }

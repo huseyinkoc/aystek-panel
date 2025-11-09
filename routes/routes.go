@@ -11,12 +11,13 @@ import (
 func AuthRoutes(router *gin.Engine) {
 	auth := router.Group("/svc/auth")
 	{
+		auth.POST("/register", controllers.RegisterHandler) // YENİ
 		auth.POST("/login-by-username", middlewares.RateLimitMiddleware(), controllers.LoginByUsernameHandler)
 		auth.POST("/login-by-email", middlewares.RateLimitMiddleware(), controllers.LoginByEmailHandler)
 		auth.POST("/login-by-phone", middlewares.RateLimitMiddleware(), controllers.LoginByPhoneHandler)
-		auth.GET("/verify", controllers.VerifyEmailHandler)
+		auth.POST("/verify-email/:token", controllers.VerifyEmailHandler) // Güncellendi: POST + path param
 		auth.POST("/refresh", controllers.RefreshTokenHandler)
-		auth.POST("/logout", middlewares.AuthMiddleware(), controllers.LogoutHandler)
+		auth.POST("/logout", controllers.LogoutHandler)
 		auth.POST("/send-verification/:userID", controllers.SendVerificationEmailHandler)
 		auth.POST("/request-password-reset", controllers.RequestPasswordResetHandler)
 		auth.POST("/reset-password", controllers.ResetPasswordHandler)

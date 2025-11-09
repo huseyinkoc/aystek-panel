@@ -2,11 +2,13 @@ package services
 
 import (
 	"admin-panel/models"
+	"admin-panel/templates"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -77,22 +79,26 @@ func VerifyEmailToken(ctx context.Context, token string) error {
 }
 
 func SendVerificationEmail(ctx context.Context, userID primitive.ObjectID, token string) error {
-	// Kullanıcı e-postasını al
-	email, err := GetUserEmailByID(ctx, userID)
+	// Kullanıcı bilgilerini al (email + username)
+	user, err := GetUserByID(ctx, userID)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve user email: %w", err)
+		return fmt.Errorf("failed to retrieve user: %w", err)
 	}
 
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:3000"
+	}
 	// Doğrulama bağlantısını oluştur
-	verificationURL := "http://localhost:8080/auth/verify?token=" + token
-	subject := "Email Verification"
-	body := "Click the following link to verify your email: " + verificationURL
+	verificationURL := fmt.Sprintf("%s/verify-email?token=%s", frontendURL, token)
+
+	subject := "AYSTEK - E-posta Doğrulama"
+	// Şablonu templates modülünden al
+	body := templates.VerificationEmailTemplate(user.Username, verificationURL)
 
 	// E-posta gönder
-	err = SendEmail([]string{email}, subject, body)
-	if err != nil {
+	if err := SendEmail([]string{user.Email}, subject, body); err != nil {
 		return fmt.Errorf("failed to send verification email: %w", err)
 	}
-
 	return nil
 }
