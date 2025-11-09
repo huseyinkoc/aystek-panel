@@ -24,33 +24,24 @@ func InitRolesService(client *mongo.Client) {
 }
 
 // GetRolePermissions returns the list of permissions for a given role and module
-func GetRolePermissions(ctx context.Context, roleID string, module string) ([]string, error) {
+// Eğer module/action bazlı yetki istiyorsan:
+func GetRolePermissions(ctx context.Context, roleID string) ([]primitive.ObjectID, error) {
 	if rolesCollection == nil {
 		return nil, errors.New("roles service not initialized")
 	}
 
-	var roleData struct {
-		Permissions map[string][]string `bson:"permissions"`
-	}
-
+	var role models.Role
 	oid, err := primitive.ObjectIDFromHex(roleID)
 	if err != nil {
 		return nil, errors.New("invalid role ID")
 	}
 
-	err = rolesCollection.FindOne(ctx, bson.M{"_id": oid}).Decode(&roleData)
+	err = rolesCollection.FindOne(ctx, bson.M{"_id": oid}).Decode(&role)
 	if err != nil {
-		if err == mongo.ErrNoDocuments {
-			return nil, errors.New("role not found")
-		}
 		return nil, err
 	}
 
-	perms, ok := roleData.Permissions[module]
-	if !ok {
-		return []string{}, nil
-	}
-	return perms, nil
+	return role.Permissions, nil
 }
 
 // CreateRole creates a new role

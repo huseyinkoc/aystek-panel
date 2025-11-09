@@ -35,10 +35,16 @@ func CreateRoleHandler(c *gin.Context) {
 		return
 	}
 
+	userID, err := primitive.ObjectIDFromHex(username.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
 	role.ID = primitive.NewObjectID()
 	role.CreatedAt = time.Now()
 	role.UpdatedAt = time.Now()
-	role.CreatedBy = username.(string)
+	role.CreatedBy = userID
 	role.IsSystem = false
 
 	// Permission ID doğrulaması service katmanında yapılır
@@ -138,7 +144,13 @@ func UpdateRoleHandler(c *gin.Context) {
 		return
 	}
 
-	updatedRole.UpdatedBy = username.(string)
+	userID, err := primitive.ObjectIDFromHex(username.(string))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
+
+	updatedRole.UpdatedBy = userID
 	updatedRole.UpdatedAt = time.Now()
 
 	if err := services.UpdateRole(c.Request.Context(), oid, updatedRole); err != nil {

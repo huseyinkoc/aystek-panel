@@ -243,12 +243,20 @@ definitions:
   models.Permission:
     properties:
       actions:
-        description: 'Örn: ["read", "write", "approve"]'
         items:
           type: string
         type: array
+      created_at:
+        type: string
+      created_by:
+        type: string
+      id:
+        type: string
       module:
-        description: 'Örn: "users"'
+        type: string
+      updated_at:
+        type: string
+      updated_by:
         type: string
     type: object
   models.Plugin:
@@ -359,13 +367,16 @@ definitions:
       name:
         type: string
       permissions:
+        description: Permission referansları
         items:
-          $ref: '#/definitions/models.Permission'
+          type: string
         type: array
       updated_at:
         type: string
       updated_by:
         type: string
+    required:
+    - name
     type: object
   models.Slider:
     type: object
@@ -2072,149 +2083,6 @@ paths:
       summary: Get posts by language
       tags:
       - Posts
-  /roles:
-    post:
-      consumes:
-      - application/json
-      description: Add a new role with its permissions and details
-      parameters:
-      - description: Role details
-        in: body
-        name: role
-        required: true
-        schema:
-          $ref: '#/definitions/models.Role'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Role created successfully
-          schema:
-            $ref: '#/definitions/models.Role'
-        "400":
-          description: Invalid request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to create role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Create a new role
-      tags:
-      - Roles
-  /roles/{id}:
-    delete:
-      description: Remove a role by its unique identifier
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Invalid role ID
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Role not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to delete role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Delete a role
-      tags:
-      - Roles
-    get:
-      description: Retrieve a role with its permissions and details by its unique
-        identifier
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Role details
-          schema:
-            $ref: '#/definitions/models.Role'
-        "400":
-          description: Invalid role ID
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Role not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to retrieve role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get a role by ID
-      tags:
-      - Roles
-    put:
-      consumes:
-      - application/json
-      description: Update role details, including permissions
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated role details
-        in: body
-        name: update
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Role updated successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid role ID or request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Role not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to update role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Update a role
-      tags:
-      - Roles
   /sliders:
     get:
       description: Retrieve all sliders with their details
@@ -2822,6 +2690,97 @@ paths:
       summary: Update a menu
       tags:
       - Menus
+  /svc/permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Permission'
+            type: array
+      summary: Get all permission modules
+      tags:
+      - Permissions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Permission module
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Permission'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a permission module
+      tags:
+      - Permissions
+  /svc/permissions/{id}:
+    delete:
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses: {}
+      summary: Delete permission module
+      tags:
+      - Permissions
+    get:
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Get permission module by ID
+      tags:
+      - Permissions
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Permission'
+      produces:
+      - application/json
+      responses: {}
+      summary: Update permission module
+      tags:
+      - Permissions
   /svc/roles:
     get:
       description: Retrieve all roles with their permissions and details
@@ -2840,6 +2799,157 @@ paths:
             additionalProperties: true
             type: object
       summary: Get all roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Add a new role with its permissions and details
+      parameters:
+      - description: Role details
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/models.Role'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Role created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new role
+      tags:
+      - Roles
+  /svc/roles/{id}:
+    delete:
+      description: Remove a role by its unique identifier
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Role deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid role ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a role
+      tags:
+      - Roles
+    get:
+      description: Retrieve a role with its permissions and details by its unique
+        identifier
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role details
+          schema:
+            $ref: '#/definitions/models.Role'
+        "400":
+          description: Invalid role ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a role by ID
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Update role details, including permissions
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated role details
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/models.Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid role ID or request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a role
       tags:
       - Roles
   /svc/settings:
