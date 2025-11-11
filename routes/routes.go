@@ -9,7 +9,7 @@ import (
 
 // AuthRoutes defines routes for authentication
 func AuthRoutes(router *gin.Engine) {
-	auth := router.Group("/svc/auth")
+	auth := router.Group("/auth")
 	{
 		auth.POST("/register", controllers.RegisterHandler) // YENİ
 		auth.POST("/login-by-username", middlewares.RateLimitMiddleware(), controllers.LoginByUsernameHandler)

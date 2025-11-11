@@ -8,14 +8,38 @@ import (
 )
 
 func PageRoutes(router *gin.Engine) {
-	pages := router.Group("/admin/pages")
-	pages.Use(middlewares.MaintenanceMiddleware())                     // Bakım modu kontrolü
-	pages.Use(middlewares.AuthMiddleware())                            // JWT kontrolü
-	pages.Use(middlewares.AuthorizeRolesMiddleware("admin", "editor")) // Roller
+	pages := router.Group("/pages")
+
+	// 🧩 Güvenlik zinciri
+	pages.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
+	pages.Use(middlewares.AuthMiddleware())        // JWT kullanıcı doğrulama
+
 	{
-		pages.POST("/create", middlewares.CSRFMiddleware(), controllers.CreatePageHandler)
-		pages.GET("/", controllers.GetAllPagesHandler)
-		pages.PUT("/:id", middlewares.CSRFMiddleware(), controllers.UpdatePageHandler)
-		pages.DELETE("/:id", middlewares.CSRFMiddleware(), controllers.DeletePageHandler)
+		// 🟢 Sayfa oluşturma
+		pages.POST("/create",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("pages", "create"),
+			controllers.CreatePageHandler,
+		)
+
+		// 🔵 Sayfa listeleme
+		pages.GET("/",
+			middlewares.AuthorizePermissionMiddleware("pages", "read"),
+			controllers.GetAllPagesHandler,
+		)
+
+		// 🟣 Sayfa güncelleme
+		pages.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("pages", "update"),
+			controllers.UpdatePageHandler,
+		)
+
+		// 🔴 Sayfa silme
+		pages.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("pages", "delete"),
+			controllers.DeletePageHandler,
+		)
 	}
 }

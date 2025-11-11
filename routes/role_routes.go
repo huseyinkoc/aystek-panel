@@ -10,31 +10,79 @@ import (
 // Role & Permission Routes
 func RoleRoutes(router *gin.Engine) {
 	// 🔹 Role işlemleri
-	roles := router.Group("/svc/roles")
+	roles := router.Group("/roles")
 	roles.Use(
-		middlewares.MaintenanceMiddleware(),
-		middlewares.AuthMiddleware(),
+		middlewares.MaintenanceMiddleware(), // Bakım modu kontrolü
+		middlewares.AuthMiddleware(),        // JWT doğrulama
 	)
 	{
-		roles.POST("/", middlewares.AuthorizeRolesMiddleware("admin"), controllers.CreateRoleHandler)
-		roles.GET("/", middlewares.AuthorizeRolesMiddleware("admin"), controllers.GetAllRolesHandler)
-		roles.GET("/:id", middlewares.AuthorizeRolesMiddleware("admin"), controllers.GetRoleHandler)
-		roles.PUT("/:id", middlewares.AuthorizeRolesMiddleware("admin"), controllers.UpdateRoleHandler)
-		roles.DELETE("/:id", middlewares.AuthorizeRolesMiddleware("admin"), controllers.DeleteRoleHandler)
+		// 🟢 Rol oluşturma
+		roles.POST("/",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("roles", "create"),
+			controllers.CreateRoleHandler,
+		)
+
+		// 🔵 Roller listesi
+		roles.GET("/",
+			middlewares.AuthorizePermissionMiddleware("roles", "read"),
+			controllers.GetAllRolesHandler,
+		)
+
+		// 🔍 Tekil rol
+		roles.GET("/:id",
+			middlewares.AuthorizePermissionMiddleware("roles", "read"),
+			controllers.GetRoleHandler,
+		)
+
+		// 🟣 Rol güncelleme
+		roles.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("roles", "update"),
+			controllers.UpdateRoleHandler,
+		)
+
+		// 🔴 Rol silme
+		roles.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("roles", "delete"),
+			controllers.DeleteRoleHandler,
+		)
 	}
 
 	// 🔹 Permission işlemleri
-	permissions := router.Group("/svc/permissions")
+	permissions := router.Group("/permissions")
 	permissions.Use(
 		middlewares.MaintenanceMiddleware(),
 		middlewares.AuthMiddleware(),
-		middlewares.AuthorizeRolesMiddleware("admin"),
 	)
 	{
-		permissions.GET("/", controllers.GetAllPermissionsHandler)
-		permissions.GET("/:id", controllers.GetPermissionHandler)
-		permissions.POST("/", controllers.CreatePermissionHandler)
-		permissions.PUT("/:id", controllers.UpdatePermissionHandler)
-		permissions.DELETE("/:id", controllers.DeletePermissionHandler)
+		permissions.GET("/",
+			middlewares.AuthorizePermissionMiddleware("permissions", "read"),
+			controllers.GetAllPermissionsHandler,
+		)
+
+		permissions.GET("/:id",
+			middlewares.AuthorizePermissionMiddleware("permissions", "read"),
+			controllers.GetPermissionHandler,
+		)
+
+		permissions.POST("/",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("permissions", "create"),
+			controllers.CreatePermissionHandler,
+		)
+
+		permissions.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("permissions", "update"),
+			controllers.UpdatePermissionHandler,
+		)
+
+		permissions.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("permissions", "delete"),
+			controllers.DeletePermissionHandler,
+		)
 	}
 }

@@ -80,7 +80,7 @@ func VerifyEmailToken(ctx context.Context, token string) error {
 
 func SendVerificationEmail(ctx context.Context, userID primitive.ObjectID, token string) error {
 	// Kullanıcı bilgilerini al (email + username)
-	user, err := GetUserByID(ctx, userID)
+	user, err := GetUserByObjectID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve user: %w", err)
 	}

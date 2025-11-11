@@ -19,7 +19,7 @@ import (
 // @Success 201 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
-// @Router /svc/permissions [post]
+// @Router /permissions [post]
 func CreatePermissionHandler(c *gin.Context) {
 	var module models.Permission
 	if err := c.ShouldBindJSON(&module); err != nil {
@@ -52,7 +52,7 @@ func CreatePermissionHandler(c *gin.Context) {
 // @Tags Permissions
 // @Produce json
 // @Success 200 {array} models.Permission
-// @Router /svc/permissions [get]
+// @Router /permissions [get]
 func GetAllPermissionsHandler(c *gin.Context) {
 	perms, err := services.GetAllPermissions(c.Request.Context())
 	if err != nil {
@@ -67,7 +67,7 @@ func GetAllPermissionsHandler(c *gin.Context) {
 // @Tags Permissions
 // @Produce json
 // @Param id path string true "Permission ID"
-// @Router /svc/permissions/{id} [get]
+// @Router /permissions/{id} [get]
 func GetPermissionHandler(c *gin.Context) {
 	id := c.Param("id")
 	oid, err := primitive.ObjectIDFromHex(id)
@@ -91,7 +91,7 @@ func GetPermissionHandler(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Permission ID"
 // @Param body body models.Permission true "Updated data"
-// @Router /svc/permissions/{id} [put]
+// @Router /permissions/{id} [put]
 func UpdatePermissionHandler(c *gin.Context) {
 	id := c.Param("id")
 	oid, err := primitive.ObjectIDFromHex(id)
@@ -125,7 +125,7 @@ func UpdatePermissionHandler(c *gin.Context) {
 // @Summary Delete permission module
 // @Tags Permissions
 // @Param id path string true "Permission ID"
-// @Router /svc/permissions/{id} [delete]
+// @Router /permissions/{id} [delete]
 func DeletePermissionHandler(c *gin.Context) {
 	id := c.Param("id")
 	oid, err := primitive.ObjectIDFromHex(id)

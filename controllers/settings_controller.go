@@ -15,7 +15,7 @@ import (
 // @Produce json
 // @Success 200 {object} models.ApplicationSettings "Application settings"
 // @Failure 500 {object} map[string]interface{} "Failed to retrieve settings"
-// @Router /svc/settings [get]
+// @Router /settings [get]
 func GetSettingsHandler(c *gin.Context) {
 	settings, err := services.GetSettings()
 	if err != nil {
@@ -35,7 +35,7 @@ func GetSettingsHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{} "Settings updated successfully"
 // @Failure 400 {object} map[string]interface{} "Invalid request payload"
 // @Failure 500 {object} map[string]interface{} "Failed to update settings"
-// @Router /svc/settings [put]
+// @Router /settings [put]
 func UpdateSettingsHandler(c *gin.Context) {
 	var update map[string]interface{}
 	if err := c.ShouldBindJSON(&update); err != nil {
@@ -59,7 +59,7 @@ func UpdateSettingsHandler(c *gin.Context) {
 // @Produce json
 // @Success 200 {object} map[string]interface{} "List of social media links"
 // @Failure 500 {object} map[string]interface{} "Failed to retrieve social media links"
-// @Router /svc/settings/social-media [get]
+// @Router /settings/social-media [get]
 func GetSocialMediaLinksHandler(c *gin.Context) {
 	links, err := services.GetSocialMediaLinks()
 	if err != nil {
@@ -80,7 +80,7 @@ func GetSocialMediaLinksHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{} "Social media links updated successfully"
 // @Failure 400 {object} map[string]interface{} "Invalid request payload"
 // @Failure 500 {object} map[string]interface{} "Failed to update social media links"
-// @Router /svc/settings/social-media [put]
+// @Router /settings/social-media [put]
 func UpdateSocialMediaLinksHandler(c *gin.Context) {
 	var links map[string]models.SocialMedia
 	if err := c.ShouldBindJSON(&links); err != nil {

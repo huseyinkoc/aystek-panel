@@ -9,18 +9,42 @@ import (
 
 func MediaRoutes(router *gin.Engine) {
 	media := router.Group("/media")
-	media.Use(middlewares.MaintenanceMiddleware())                     // Bakım modu kontrolü
-	media.Use(middlewares.AuthMiddleware())                            // JWT doğrulama
-	media.Use(middlewares.AuthorizeRolesMiddleware("admin", "editor")) // Yetki kontrolü (admin ve editor)
+
+	// 🧩 Genel Middleware zinciri
+	media.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
+	media.Use(middlewares.AuthMiddleware())        // JWT doğrulama
 
 	{
-		// Hassas işlemler için CSRF koruması
-		media.POST("/upload", middlewares.CSRFMiddleware(), controllers.UploadMediaHandler)
-		media.DELETE("/:id", middlewares.CSRFMiddleware(), controllers.DeleteMediaHandler)
+		// 🟢 Yükleme işlemi (create)
+		media.POST("/upload",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("media", "create"),
+			controllers.UploadMediaHandler,
+		)
 
-		// GET işlemleri için sadece JWT doğrulama ve yetkilendirme
-		media.GET("/", controllers.GetAllMediaHandler)
-		media.GET("/:id", controllers.GetMediaDetailHandler)
-		media.GET("/filter", controllers.GetFilteredMediaHandler)
+		// 🔴 Silme işlemi (delete)
+		media.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("media", "delete"),
+			controllers.DeleteMediaHandler,
+		)
+
+		// 🔵 Tüm medyaları listeleme (read)
+		media.GET("/",
+			middlewares.AuthorizePermissionMiddleware("media", "read"),
+			controllers.GetAllMediaHandler,
+		)
+
+		// 🟣 Medya detayı görüntüleme (read)
+		media.GET("/:id",
+			middlewares.AuthorizePermissionMiddleware("media", "read"),
+			controllers.GetMediaDetailHandler,
+		)
+
+		// 🟠 Filtreli medya listesi (read)
+		media.GET("/filter",
+			middlewares.AuthorizePermissionMiddleware("media", "read"),
+			controllers.GetFilteredMediaHandler,
+		)
 	}
 }

@@ -24,11 +24,11 @@ import (
 
 // Claims yapısı - JWT v5
 type Claims struct {
-	UserID            string   `json:"userID"`
-	Username          string   `json:"username"`
-	Email             string   `json:"email"`
-	PreferredLanguage string   `json:"preferred_language"`
-	Roles             []string `json:"roles"`
+	UserID            string               `json:"userID"`
+	Username          string               `json:"username"`
+	Email             string               `json:"email"`
+	PreferredLanguage string               `json:"preferred_language"`
+	Roles             []primitive.ObjectID `bson:"roles" json:"roles"`
 	jwt.RegisteredClaims
 }
 
@@ -51,7 +51,7 @@ func generateResetToken() (string, error) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
-// @Router /svc/auth/login-by-username [post]
+// @Router /auth/login-by-username [post]
 func LoginByUsernameHandler(c *gin.Context) {
 	var input struct {
 		Username string `json:"username" binding:"required"`
@@ -149,7 +149,7 @@ func LoginByUsernameHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
-// @Router /svc/auth/login-by-email [post]
+// @Router /auth/login-by-email [post]
 func LoginByEmailHandler(c *gin.Context) {
 	var input struct {
 		Email    string `json:"email" binding:"required"`
@@ -252,7 +252,7 @@ func LoginByEmailHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
-// @Router /svc/auth/login-by-phone [post]
+// @Router /auth/login-by-phone [post]
 func LoginByPhoneHandler(c *gin.Context) {
 	var input struct {
 		PhoneNumber string `json:"phone_number" binding:"required"`
@@ -316,7 +316,7 @@ func LoginByPhoneHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
-// @Router /svc/auth/validate [get]
+// @Router /auth/validate [get]
 func ValidateTokenHandler(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")
 	if tokenString == "" {
@@ -353,7 +353,7 @@ func ValidateTokenHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 401 {object} map[string]interface{}
-// @Router /svc/auth/refresh [post]
+// @Router /auth/refresh [post]
 func RefreshTokenHandler(c *gin.Context) {
 	var input struct {
 		RefreshToken string `json:"refresh_token" binding:"required"`
@@ -397,7 +397,7 @@ func RefreshTokenHandler(c *gin.Context) {
 // @Tags Auth
 // @Security BearerAuth
 // @Success 200 {object} map[string]interface{}
-// @Router /svc/auth/logout [post]
+// @Router /auth/logout [post]
 func LogoutHandler(c *gin.Context) {
 	tokenString := c.GetHeader("Authorization")
 	if tokenString == "" {
@@ -446,7 +446,7 @@ func LogoutHandler(c *gin.Context) {
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
 // @Failure 500 {object} map[string]interface{}
-// @Router /svc/auth/send-verification/{userID} [post]
+// @Router /auth/send-verification/{userID} [post]
 func SendVerificationEmailHandler(c *gin.Context) {
 	userID := c.Param("userID")
 	objectID, err := primitive.ObjectIDFromHex(userID)
@@ -468,7 +468,7 @@ func SendVerificationEmailHandler(c *gin.Context) {
 	verificationLink := fmt.Sprintf("%s/verify-email?token=%s", frontendURL, token)
 	log.Printf("🔗 Doğrulama linki: %s", verificationLink)
 
-	_, err = services.GetUserByID(c.Request.Context(), objectID)
+	_, err = services.GetUserByObjectID(c.Request.Context(), objectID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "User not found"})
 		return
@@ -489,7 +489,7 @@ func SendVerificationEmailHandler(c *gin.Context) {
 // @Param token path string true "Verification token"
 // @Success 200 {object} map[string]interface{}
 // @Failure 400 {object} map[string]interface{}
-// @Router /svc/auth/verify-email/{token} [post]
+// @Router /auth/verify-email/{token} [post]
 func VerifyEmailHandler(c *gin.Context) {
 	raw := c.Param("token")
 	if raw == "" {
@@ -529,7 +529,7 @@ func VerifyEmailHandler(c *gin.Context) {
 // @Produce json
 // @Param body body models.RequestPasswordReset true "Email"
 // @Success 200 {object} map[string]string
-// @Router /svc/auth/request-password-reset [post]
+// @Router /auth/request-password-reset [post]
 func RequestPasswordResetHandler(c *gin.Context) {
 	var req models.RequestPasswordReset
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -594,7 +594,7 @@ func RequestPasswordResetHandler(c *gin.Context) {
 // @Produce json
 // @Param body body models.ResetPasswordTokenRequest true "Token and new password"
 // @Success 200 {object} map[string]string
-// @Router /svc/auth/reset-password [post] @Description Reset password with token
+// @Router /auth/reset-password [post] @Description Reset password with token
 func ResetPasswordHandler(c *gin.Context) {
 	var req models.ResetPasswordTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -654,7 +654,7 @@ func ResetPasswordHandler(c *gin.Context) {
 // @Produce json
 // @Param body body models.RegisterRequest true "Registration data"
 // @Success 201 {object} map[string]string
-// @Router /svc/auth/register [post]
+// @Router /auth/register [post]
 func RegisterHandler(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -697,7 +697,7 @@ func RegisterHandler(c *gin.Context) {
 		Surname:           req.LastName,
 		FullName:          fmt.Sprintf("%s %s", req.FirstName, req.LastName),
 		PhoneNumber:       req.PhoneNumber,
-		Roles:             []string{},
+		Roles:             []primitive.ObjectID{},
 		IsEmailVerified:   false,
 		IsApprovedByAdmin: false,
 		PreferredLanguage: "tr",

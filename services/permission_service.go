@@ -14,6 +14,11 @@ import (
 
 var permissionsCollection *mongo.Collection
 
+// PermissionsCollection returns the MongoDB collection reference
+func PermissionsCollection() *mongo.Collection {
+	return permissionsCollection
+}
+
 // InitPermissionService — dinamik DB ismine göre koleksiyonu ayarla
 func InitPermissionService(client *mongo.Client) {
 	dbName := os.Getenv("MONGO_DBNAME")
@@ -118,4 +123,39 @@ func GetPermissionsByHexIDs(ctx context.Context, hexIDs []string) ([]models.Perm
 		perms = append(perms, p)
 	}
 	return perms, nil
+}
+
+// FindPermissionByModuleAndAction — belirli modül ve aksiyon için izin döndürür
+func FindPermissionByModuleAndAction(ctx context.Context, module, action string) (*models.Permission, error) {
+	filter := bson.M{
+		"module":  module,
+		"actions": bson.M{"$in": []string{action}},
+	}
+	var perm models.Permission
+	err := permissionsCollection.FindOne(ctx, filter).Decode(&perm)
+	if err != nil {
+		return nil, err
+	}
+	return &perm, nil
+}
+
+// GetPermissionsByIDs - Verilen ObjectID listesine göre izin belgelerini getirir
+func GetPermissionsByIDs(ctx context.Context, ids []primitive.ObjectID) ([]models.Permission, error) {
+	if len(ids) == 0 {
+		return []models.Permission{}, nil
+	}
+
+	cursor, err := PermissionsCollection().Find(ctx, bson.M{
+		"_id": bson.M{"$in": ids},
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var permissions []models.Permission
+	if err := cursor.All(ctx, &permissions); err != nil {
+		return nil, err
+	}
+	return permissions, nil
 }

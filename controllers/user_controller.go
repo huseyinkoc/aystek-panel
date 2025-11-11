@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -81,6 +80,50 @@ func GetAllUsersHandler(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, users)
+}
+
+// GetUserByIDHandler retrieves a single user by ID
+// @Summary Get user by ID
+// @Description Retrieve a single user document by its ID
+// @Tags Users
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} models.User "User data"
+// @Failure 400 {object} map[string]interface{} "Invalid user ID"
+// @Failure 404 {object} map[string]interface{} "User not found"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /users/{id} [get]
+func GetUserByIDHandler(c *gin.Context) {
+	idStr := c.Param("id")
+	if idStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing id parameter"})
+		return
+	}
+
+	oid, err := primitive.ObjectIDFromHex(idStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		return
+	}
+
+	user, err := services.GetUserByObjectID(c.Request.Context(), oid)
+	if err != nil {
+		// servis hata döndürüyorsa genel olarak 404/500 ayrımı yapılabilir; burada basitçe not found gösteriyoruz
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"id":                 user.ID.Hex(),
+		"username":           user.Username,
+		"email":              user.Email,
+		"name":               user.Name,
+		"surname":            user.Surname,
+		"roles":              user.Roles,
+		"preferred_language": user.PreferredLanguage,
+		"created_at":         user.CreatedAt,
+		"updated_at":         user.UpdatedAt,
+	})
 }
 
 // UpdateUserHandler updates an existing user
@@ -219,85 +262,154 @@ func UpdatePreferredLanguageHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Preferred language updated successfully"})
 }
 
-// ApproveUserHandler approves a user by admin
-// @Summary Approve user
-// @Description Approve user by admin (only if email is verified)
+// ApproveUserHandler approves a user by an admin
+// @Summary Approve a user
+// @Description Approve a user's account after email verification (Admin only)
 // @Tags Users
 // @Security BearerAuth
+// @Produce json
 // @Param id path string true "User ID"
-// @Success 200 {object} map[string]string
-// @Router /admin/users/{id}/approve [patch]
+// @Success 200 {object} map[string]string "User approved successfully"
+// @Failure 400 {object} map[string]string "Invalid ID or unverified email"
+// @Failure 404 {object} map[string]string "User not found"
+// @Failure 500 {object} map[string]string "Internal server error"
+// @Router /users/{id}/approve [patch]
 func ApproveUserHandler(c *gin.Context) {
-	userID := c.Param("id")
-
-	objID, err := primitive.ObjectIDFromHex(userID)
+	idParam := c.Param("id")
+	userID, err := primitive.ObjectIDFromHex(idParam)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kullanıcı ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
 	// Kullanıcıyı getir
-	user, err := services.GetUserByID(c.Request.Context(), objID)
+	user, err := services.GetUserByObjectID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Kullanıcı bulunamadı"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
 	// E-posta doğrulaması yapılmadıysa onaylama
 	if !user.IsEmailVerified {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Kullanıcının e-posta doğrulaması yapılmamış"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User email not verified"})
 		return
 	}
 
 	// Yönetici onayını gerçekleştir
-	err = services.ApproveUserByAdmin(c.Request.Context(), objID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Kullanıcı onaylanamadı"})
+	if err := services.ApproveUserByAdmin(c.Request.Context(), userID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to approve user"})
 		return
 	}
 
-	log.Printf("✅ Kullanıcı onaylandı: %s", userID)
-	c.JSON(http.StatusOK, gin.H{"message": "Kullanıcı başarıyla onaylandı"})
+	log.Printf("✅ User approved: %s", idParam)
+	c.JSON(http.StatusOK, gin.H{"message": "User approved successfully"})
 }
 
-// AssignRolesHandler assigns roles to a user
-// @Summary Assign roles
-// @Description Assign roles to user
+// AssignRolesHandler updates user roles
+// @Summary Assign roles to a user
+// @Description Update a user's roles by ID (Admin only)
 // @Tags Users
 // @Security BearerAuth
+// @Accept json
+// @Produce json
 // @Param id path string true "User ID"
-// @Param body body map[string][]string true "Roles"
-// @Success 200 {object} map[string]string
-// @Router /admin/users/{id}/roles [patch]
+// @Param body body object{roles=[]string} true "List of role IDs"
+// @Success 200 {object} map[string]string "Roles updated successfully"
+// @Failure 400 {object} map[string]string "Invalid request body or user ID"
+// @Failure 404 {object} map[string]string "User not found"
+// @Failure 500 {object} map[string]string "Failed to update roles"
+// @Router /users/{id}/roles [patch]
 func AssignRolesHandler(c *gin.Context) {
-	userID := c.Param("id")
+	idParam := c.Param("id")
+	userID, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		return
+	}
 
+	// Accept array of strings from client (either hex ids or role names)
 	var req struct {
 		Roles []string `json:"roles" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz istek"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid or missing request body", "detail": err.Error()})
 		return
 	}
 
-	objID, err := primitive.ObjectIDFromHex(userID)
+	if len(req.Roles) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "roles array cannot be empty"})
+		return
+	}
+
+	var roleOIDs []primitive.ObjectID
+	var invalid []string
+
+	for _, s := range req.Roles {
+		sTrim := s
+		// try hex ObjectID first
+		if oid, err := primitive.ObjectIDFromHex(sTrim); err == nil {
+			roleOIDs = append(roleOIDs, oid)
+			continue
+		}
+
+		// fallback: treat input as role name and lookup
+		roleDoc, err := services.GetRoleByName(c.Request.Context(), sTrim)
+		if err == nil && roleDoc != nil {
+			roleOIDs = append(roleOIDs, roleDoc.ID)
+			continue
+		}
+
+		// not found as id nor name -> collect invalid entry
+		invalid = append(invalid, sTrim)
+	}
+
+	if len(invalid) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Some roles invalid", "invalid_roles": invalid})
+		return
+	}
+
+	// Kullanıcı var mı kontrol et
+	_, err = services.GetUserByObjectID(c.Request.Context(), userID)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Geçersiz kullanıcı ID"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	update := primitive.M{
-		"roles":      req.Roles,
-		"updated_at": time.Now(),
+	if err := services.UpdateUserRoles(userID, roleOIDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update roles", "detail": err.Error()})
+		return
 	}
 
-	_, err = services.UpdateUser(objID, update)
+	c.JSON(http.StatusOK, gin.H{"message": "Roles updated successfully"})
+}
+
+// GetUserRolesHandler godoc
+// @Summary Get roles of a specific user
+// @Description Returns all roles assigned to a specific user
+// @Tags Users
+// @Produce json
+// @Param id path string true "User ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 404 {object} map[string]interface{}
+// @Router /users/{id}/roles [get]
+func GetUserRolesHandler(c *gin.Context) {
+	idParam := c.Param("id")
+	userID, err := primitive.ObjectIDFromHex(idParam)
 	if err != nil {
-		log.Printf("❌ Rol atama hatası: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Rol atanamadı"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
 
-	log.Printf("✅ Roller atandı: %s -> %v", userID, req.Roles)
-	c.JSON(http.StatusOK, gin.H{"message": "Roller başarıyla atandı"})
+	roles, err := services.GetUserRoles(userID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get roles"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"count":  len(roles),
+		"expand": false,
+		"roles":  roles,
+	})
 }

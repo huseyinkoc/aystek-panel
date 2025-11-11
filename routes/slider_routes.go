@@ -9,13 +9,39 @@ import (
 
 func SliderRoutes(router *gin.Engine) {
 	sliders := router.Group("/sliders")
-	sliders.Use(middlewares.MaintenanceMiddleware())                     // Bakım modu kontrolü
-	sliders.Use(middlewares.AuthMiddleware())                            // JWT Middleware
-	sliders.Use(middlewares.AuthorizeRolesMiddleware("admin", "editor")) // Sadece adminler erişebilir
+
+	// 🧩 Güvenlik ve sistem kontrolleri
+	sliders.Use(
+		middlewares.MaintenanceMiddleware(), // Bakım modu
+		middlewares.AuthMiddleware(),        // JWT kontrolü
+	)
+
 	{
-		sliders.POST("/", middlewares.CSRFMiddleware(), controllers.CreateSliderHandler)
-		sliders.GET("/", controllers.GetSlidersHandler)
-		sliders.PUT("/:id", middlewares.CSRFMiddleware(), controllers.UpdateSliderHandler)
-		sliders.DELETE("/:id", middlewares.CSRFMiddleware(), controllers.DeleteSliderHandler)
+		// 🟢 Slider oluşturma
+		sliders.POST("/",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("sliders", "create"),
+			controllers.CreateSliderHandler,
+		)
+
+		// 🔵 Slider listesi
+		sliders.GET("/",
+			middlewares.AuthorizePermissionMiddleware("sliders", "read"),
+			controllers.GetSlidersHandler,
+		)
+
+		// 🟣 Slider güncelleme
+		sliders.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("sliders", "update"),
+			controllers.UpdateSliderHandler,
+		)
+
+		// 🔴 Slider silme
+		sliders.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("sliders", "delete"),
+			controllers.DeleteSliderHandler,
+		)
 	}
 }

@@ -8,12 +8,12 @@ import (
 )
 
 func SettingsRoutes(router *gin.Engine) {
-	settings := router.Group("/svc/settings")
+	settings := router.Group("/settings")
 	{
 		settings.GET("/", middlewares.MaintenanceMiddleware(), controllers.GetSettingsHandler)
 		settings.PUT("/", middlewares.AuthMiddleware(), controllers.UpdateSettingsHandler)
 	}
-	links := router.Group("/svc/settings/social-media")
+	links := router.Group("/settings/social-media")
 	{
 		links.GET("/", middlewares.MaintenanceMiddleware(), controllers.GetSocialMediaLinksHandler)
 		links.PUT("/", middlewares.MaintenanceMiddleware(), middlewares.AuthMiddleware(), controllers.UpdateSocialMediaLinksHandler)

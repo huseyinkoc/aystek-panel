@@ -8,15 +8,46 @@ import (
 )
 
 func TagRoutes(router *gin.Engine) {
-	tags := router.Group("/admin/tags")
-	tags.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
-	tags.Use(middlewares.AuthMiddleware())
-	tags.Use(middlewares.AuthorizeRolesMiddleware("admin", "editor"))
+	tags := router.Group("/tags")
+
+	// 🧩 Ortak güvenlik zinciri
+	tags.Use(
+		middlewares.MaintenanceMiddleware(), // Bakım modu kontrolü
+		middlewares.AuthMiddleware(),        // JWT doğrulama
+	)
+
 	{
-		tags.POST("/create", middlewares.CSRFMiddleware(), controllers.CreateTagHandler)
-		tags.GET("/", controllers.GetAllTagsHandler)
-		tags.GET("/:id", controllers.GetTagByIDHandler)
-		tags.PUT("/:id", controllers.UpdateTagHandler)
-		tags.DELETE("/:id", controllers.DeleteTagHandler)
+		// 🟢 Etiket oluşturma
+		tags.POST("/create",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("tags", "create"),
+			controllers.CreateTagHandler,
+		)
+
+		// 🔵 Etiketleri listeleme
+		tags.GET("/",
+			middlewares.AuthorizePermissionMiddleware("tags", "read"),
+			controllers.GetAllTagsHandler,
+		)
+
+		// 🔍 Tek bir etiketi getirme
+		tags.GET("/:id",
+			middlewares.AuthorizePermissionMiddleware("tags", "read"),
+			controllers.GetTagByIDHandler,
+		)
+
+		// 🟣 Etiket güncelleme
+		tags.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("tags", "update"),
+			controllers.UpdateTagHandler,
+		)
+
+		// 🔴 Etiket silme
+		tags.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("tags", "delete"),
+			controllers.DeleteTagHandler,
+		)
 	}
 }

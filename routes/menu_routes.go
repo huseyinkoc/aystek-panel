@@ -8,13 +8,38 @@ import (
 )
 
 func MenuRoutes(router *gin.Engine) {
-	menus := router.Group("/svc/menus")
+	menus := router.Group("/menus")
+
+	// 🧩 Genel güvenlik zinciri
 	menus.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
-	menus.Use(middlewares.AuthMiddleware())        // Kullanıcı giriş kontrolü
+	menus.Use(middlewares.AuthMiddleware())        // JWT kullanıcı doğrulama
+
 	{
-		menus.POST("/", middlewares.CSRFMiddleware(), controllers.CreateMenuHandler) // Menü oluşturma
-		menus.GET("/", controllers.GetMenusHandler)                                  // Yetkilere göre menüleri getirme
-		menus.PUT("/:id", middlewares.CSRFMiddleware(), controllers.UpdateMenuHandler)
-		menus.DELETE("/:id", middlewares.CSRFMiddleware(), controllers.DeleteMenuHandler)
+		// 🟢 Menü oluşturma
+		menus.POST("/",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("menus", "create"),
+			controllers.CreateMenuHandler,
+		)
+
+		// 🔵 Menüler listesi (yetkili kullanıcı)
+		menus.GET("/",
+			middlewares.AuthorizePermissionMiddleware("menus", "read"),
+			controllers.GetMenusHandler,
+		)
+
+		// 🟣 Menü güncelleme
+		menus.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("menus", "update"),
+			controllers.UpdateMenuHandler,
+		)
+
+		// 🔴 Menü silme
+		menus.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("menus", "delete"),
+			controllers.DeleteMenuHandler,
+		)
 	}
 }

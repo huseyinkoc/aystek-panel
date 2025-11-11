@@ -144,6 +144,12 @@ func GetAllRoles(ctx context.Context) ([]models.Role, error) {
 	return roles, nil
 }
 
+// UpdateRoleByID — Rol güncelleme işlemi
+func UpdateRoleByID(ctx context.Context, id primitive.ObjectID, update bson.M) error {
+	_, err := rolesCollection.UpdateByID(ctx, id, update)
+	return err
+}
+
 // GetRoleByID fetches role details by ObjectID
 func GetRoleByID(ctx context.Context, id primitive.ObjectID) (*models.Role, error) {
 	if rolesCollection == nil {
@@ -156,6 +162,23 @@ func GetRoleByID(ctx context.Context, id primitive.ObjectID) (*models.Role, erro
 		return nil, err
 	}
 	return &role, nil
+}
+
+// GetRolesByIDs — Birden fazla Role ID üzerinden rolleri getir
+func GetRolesByIDs(ctx context.Context, ids []primitive.ObjectID) ([]models.Role, error) {
+	if len(ids) == 0 {
+		return []models.Role{}, nil
+	}
+	filter := bson.M{"_id": bson.M{"$in": ids}}
+	cursor, err := rolesCollection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	var roles []models.Role
+	if err = cursor.All(ctx, &roles); err != nil {
+		return nil, err
+	}
+	return roles, nil
 }
 
 // GetAllRolesWithPermissions joins roles with permission details.
@@ -253,4 +276,21 @@ func GetRoleWithPermissions(ctx context.Context, id primitive.ObjectID) (bson.M,
 		return nil, mongo.ErrNoDocuments
 	}
 	return results[0], nil
+}
+
+// GetRoleByName finds a role document by its name (case sensitive).
+// Returns the role model or mongo.ErrNoDocuments if not found.
+func GetRoleByName(ctx context.Context, name string) (*models.Role, error) {
+	if rolesCollection == nil {
+		return nil, errors.New("roles service not initialized")
+	}
+	var role models.Role
+	err := rolesCollection.FindOne(ctx, bson.M{"name": name}).Decode(&role)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return nil, err
+		}
+		return nil, err
+	}
+	return &role, nil
 }

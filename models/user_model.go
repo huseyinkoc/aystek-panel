@@ -1,26 +1,27 @@
 package models
 
 import (
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // User represents the user schema
 type User struct {
-	ID                primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	Name              string             `bson:"name" json:"name" binding:"required"`
-	Surname           string             `bson:"surname" json:"surname" binding:"required"`
-	FullName          string             `bson:"full_name" json:"full_name"`
-	Email             string             `bson:"email" json:"email" binding:"required,email"`
-	PhoneNumber       string             `bson:"phone_number,omitempty" json:"phone_number,omitempty"`
-	PreferredLanguage string             `bson:"preferred_language" json:"preferred_language"`
-	Username          string             `bson:"username" json:"username" binding:"required"`
-	Password          string             `bson:"password" json:"password"`
-	Roles             []string           `bson:"roles" json:"roles"`
-	IsEmailVerified   bool               `bson:"is_email_verified" json:"is_email_verified"`
-	IsApprovedByAdmin bool               `bson:"is_approved_by_admin" json:"is_approved_by_admin"`
-	CreatedAt         time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt         time.Time          `bson:"updated_at" json:"updated_at"`
+	ID                primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
+	Name              string               `bson:"name" json:"name" binding:"required"`
+	Surname           string               `bson:"surname" json:"surname" binding:"required"`
+	FullName          string               `bson:"full_name" json:"full_name"`
+	Email             string               `bson:"email" json:"email" binding:"required,email"`
+	PhoneNumber       string               `bson:"phone_number,omitempty" json:"phone_number,omitempty"`
+	PreferredLanguage string               `bson:"preferred_language" json:"preferred_language"`
+	Username          string               `bson:"username" json:"username" binding:"required"`
+	Password          string               `bson:"password" json:"password"`
+	Roles             []primitive.ObjectID `bson:"roles" json:"roles"`
+	IsEmailVerified   bool                 `bson:"is_email_verified" json:"is_email_verified"`
+	IsApprovedByAdmin bool                 `bson:"is_approved_by_admin" json:"is_approved_by_admin"`
+	CreatedAt         time.Time            `bson:"created_at" json:"created_at"`
+	UpdatedAt         time.Time            `bson:"updated_at" json:"updated_at"`
 }
 
 type RegisterRequest struct {

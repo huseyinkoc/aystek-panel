@@ -13,10 +13,28 @@ func CategoryRoutes(router *gin.Engine) {
 	categories.Use(middlewares.AuthMiddleware())
 	//categories.Use(middlewares.AuthorizeRolesMiddleware("admin", "editor"))
 	{
-		categories.POST("/create", middlewares.CSRFMiddleware(), middlewares.AuthorizeRolesMiddleware("admin"), controllers.CreateCategoryHandler)
-		categories.GET("/", middlewares.CSRFMiddleware(), middlewares.AuthorizeRolesMiddleware("admin", "editor"), controllers.GetAllCategoriesHandler)
-		categories.GET("/:id", controllers.GetCategoryByIDHandler)
-		categories.PUT("/:id", middlewares.CSRFMiddleware(), middlewares.AuthorizeRolesMiddleware("admin", "editor"), controllers.UpdateCategoryHandler)
-		categories.DELETE("/:id", middlewares.CSRFMiddleware(), middlewares.AuthorizeRolesMiddleware("admin", "editor"), controllers.DeleteCategoryHandler)
+		categories.POST("/create",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("categories", "create"),
+			controllers.CreateCategoryHandler)
+
+		categories.GET("/",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("categories", "read"),
+			controllers.GetAllCategoriesHandler)
+
+		categories.GET("/:id",
+			middlewares.AuthorizePermissionMiddleware("categories", "read"),
+			controllers.GetCategoryByIDHandler)
+
+		categories.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("categories", "update"),
+			controllers.UpdateCategoryHandler)
+
+		categories.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("categories", "delete"),
+			controllers.DeleteCategoryHandler)
 	}
 }

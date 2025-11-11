@@ -474,46 +474,212 @@ paths:
       summary: Get all activity logs
       tags:
       - Activity Logs
-  /admin/users/{id}/approve:
-    patch:
-      description: Approve user by admin (only if email is verified)
+  /auth/login-by-email:
+    post:
+      consumes:
+      - application/json
+      description: E-posta ve şifre ile giriş. Geçerli access token varsa aynı token
+        döner; yoksa yeni access+refresh üretilir.
       parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Approve user
-      tags:
-      - Users
-  /admin/users/{id}/roles:
-    patch:
-      description: Assign roles to user
-      parameters:
-      - description: User ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Roles
+      - description: Kullanıcı giriş bilgileri
         in: body
         name: body
         required: true
         schema:
-          additionalProperties:
-            items:
+          properties:
+            email:
               type: string
-            type: array
+            password:
+              type: string
           type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: E-posta ile Giriş
+      tags:
+      - Auth
+  /auth/login-by-phone:
+    post:
+      consumes:
+      - application/json
+      description: Telefon + şifre ile giriş. Geçerli access token varsa aynı token
+        döner; yoksa yeni access+refresh üretilir.
+      parameters:
+      - description: Kullanıcı giriş bilgileri
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            password:
+              type: string
+            phone_number:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Telefon ile Giriş
+      tags:
+      - Auth
+  /auth/login-by-username:
+    post:
+      consumes:
+      - application/json
+      description: Kullanıcı adı ve şifre ile giriş. Geçerli access token varsa aynı
+        token döner; yoksa yeni access+refresh üretilir.
+      parameters:
+      - description: Kullanıcı giriş bilgileri
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            password:
+              type: string
+            username:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Kullanıcı Adı ile Giriş
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      description: Kullanıcının tüm refresh + access + CSRF tokenlarını siler (tam
+        çıkış).
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Logout
+      tags:
+      - Auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Geçerli refresh token ile yeni access token üretir
+      parameters:
+      - description: Refresh token
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            refresh_token:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Refresh Access Token
+      tags:
+      - Auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Yeni kullanıcı kaydı ve doğrulama e-postası gönderimi
+      parameters:
+      - description: Registration data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Register new user
+      tags:
+      - Auth
+  /auth/request-password-reset:
+    post:
+      consumes:
+      - application/json
+      description: Aktif kullanıcı için şifre sıfırlama e-postası gönderir
+      parameters:
+      - description: Email
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.RequestPasswordReset'
+      produces:
+      - application/json
       responses:
         "200":
           description: OK
@@ -521,11 +687,110 @@ paths:
             additionalProperties:
               type: string
             type: object
+      summary: Request password reset
+      tags:
+      - Auth
+  /auth/reset-password:
+    post:
+      consumes:
+      - application/json
+      description: Token ile şifreyi sıfırlama
+      parameters:
+      - description: Token and new password
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.ResetPasswordTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Reset password
+      tags:
+      - Auth
+  /auth/send-verification/{userID}:
+    post:
+      description: Belirli kullanıcıya doğrulama e-postası gönderir
+      parameters:
+      - description: User ID
+        in: path
+        name: userID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Send verification email
+      tags:
+      - Auth
+  /auth/validate:
+    get:
+      description: JWT token geçerli mi kontrol eder, kullanıcı bilgisini döner.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
       security:
       - BearerAuth: []
-      summary: Assign roles
+      summary: Token Doğrulama
       tags:
-      - Users
+      - Auth
+  /auth/verify-email/{token}:
+    post:
+      description: Verifies a user's email using a token
+      parameters:
+      - description: Verification token
+        in: path
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Verify email
+      tags:
+      - Auth
   /categories:
     get:
       description: Retrieve all categories with their details
@@ -1441,6 +1706,181 @@ paths:
       summary: Upload a new media file
       tags:
       - Media
+  /menus:
+    get:
+      description: Retrieve all menus, including frontend and backend menus
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu type (frontend or backend)
+        in: query
+        name: type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of menus
+          schema:
+            items:
+              $ref: '#/definitions/models.Menu'
+            type: array
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve menus
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all menus
+      tags:
+      - Menus
+    post:
+      consumes:
+      - application/json
+      description: Add a new menu with its details
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu details
+        in: body
+        name: menu
+        required: true
+        schema:
+          $ref: '#/definitions/models.Menu'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Menu created successfully
+          schema:
+            $ref: '#/definitions/models.Menu'
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create menu
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new menu
+      tags:
+      - Menus
+  /menus/{id}:
+    delete:
+      description: Remove a menu by its unique identifier
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Invalid menu ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Menu not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete menu
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a menu
+      tags:
+      - Menus
+    put:
+      consumes:
+      - application/json
+      description: Update menu details by its ID
+      parameters:
+      - description: Bearer Token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Menu ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated menu details
+        in: body
+        name: menu
+        required: true
+        schema:
+          $ref: '#/definitions/models.Menu'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Menu updated successfully
+          schema:
+            $ref: '#/definitions/models.Menu'
+        "400":
+          description: Invalid request payload or menu ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Menu not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update menu
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update a menu
+      tags:
+      - Menus
   /notifications:
     post:
       consumes:
@@ -1640,6 +2080,97 @@ paths:
       summary: Update a page
       tags:
       - Pages
+  /permissions:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Permission'
+            type: array
+      summary: Get all permission modules
+      tags:
+      - Permissions
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Permission module
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Permission'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a permission module
+      tags:
+      - Permissions
+  /permissions/{id}:
+    delete:
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses: {}
+      summary: Delete permission module
+      tags:
+      - Permissions
+    get:
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses: {}
+      summary: Get permission module by ID
+      tags:
+      - Permissions
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Permission ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/models.Permission'
+      produces:
+      - application/json
+      responses: {}
+      summary: Update permission module
+      tags:
+      - Permissions
   /plugins:
     get:
       description: Retrieve all plugins available in the system
@@ -2083,6 +2614,282 @@ paths:
       summary: Get posts by language
       tags:
       - Posts
+  /roles:
+    get:
+      description: Retrieve all roles with their permissions and details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of roles
+          schema:
+            items:
+              $ref: '#/definitions/models.Role'
+            type: array
+        "500":
+          description: Failed to retrieve roles
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get all roles
+      tags:
+      - Roles
+    post:
+      consumes:
+      - application/json
+      description: Add a new role with its permissions and details
+      parameters:
+      - description: Role details
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/models.Role'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Role created successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to create role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a new role
+      tags:
+      - Roles
+  /roles/{id}:
+    delete:
+      description: Remove a role by its unique identifier
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Role deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid role ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to delete role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a role
+      tags:
+      - Roles
+    get:
+      description: Retrieve a role with its permissions and details by its unique
+        identifier
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role details
+          schema:
+            $ref: '#/definitions/models.Role'
+        "400":
+          description: Invalid role ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a role by ID
+      tags:
+      - Roles
+    put:
+      consumes:
+      - application/json
+      description: Update role details, including permissions
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Updated role details
+        in: body
+        name: role
+        required: true
+        schema:
+          $ref: '#/definitions/models.Role'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Role updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid role ID or request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Role not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update role
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update a role
+      tags:
+      - Roles
+  /settings:
+    get:
+      description: Retrieve all application settings including general settings and
+        configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Application settings
+          schema:
+            $ref: '#/definitions/models.ApplicationSettings'
+        "500":
+          description: Failed to retrieve settings
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get application settings
+      tags:
+      - Settings
+    put:
+      consumes:
+      - application/json
+      description: Update application settings with new values
+      parameters:
+      - description: Updated settings data
+        in: body
+        name: update
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Settings updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update settings
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update application settings
+      tags:
+      - Settings
+  /settings/social-media:
+    get:
+      description: Retrieve all social media links configured for the application
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of social media links
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to retrieve social media links
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get social media links
+      tags:
+      - Social Media
+    put:
+      consumes:
+      - application/json
+      description: Update the social media links for the application
+      parameters:
+      - description: Updated social media links
+        in: body
+        name: links
+        required: true
+        schema:
+          additionalProperties:
+            $ref: '#/definitions/models.SocialMedia'
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Social media links updated successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request payload
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Failed to update social media links
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Update social media links
+      tags:
+      - Social Media
   /sliders:
     get:
       description: Retrieve all sliders with their details
@@ -2198,865 +3005,6 @@ paths:
       summary: Update a slider
       tags:
       - Sliders
-  /svc/auth/login-by-email:
-    post:
-      consumes:
-      - application/json
-      description: E-posta ve şifre ile giriş. Geçerli access token varsa aynı token
-        döner; yoksa yeni access+refresh üretilir.
-      parameters:
-      - description: Kullanıcı giriş bilgileri
-        in: body
-        name: body
-        required: true
-        schema:
-          properties:
-            email:
-              type: string
-            password:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-      summary: E-posta ile Giriş
-      tags:
-      - Auth
-  /svc/auth/login-by-phone:
-    post:
-      consumes:
-      - application/json
-      description: Telefon + şifre ile giriş. Geçerli access token varsa aynı token
-        döner; yoksa yeni access+refresh üretilir.
-      parameters:
-      - description: Kullanıcı giriş bilgileri
-        in: body
-        name: body
-        required: true
-        schema:
-          properties:
-            password:
-              type: string
-            phone_number:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Telefon ile Giriş
-      tags:
-      - Auth
-  /svc/auth/login-by-username:
-    post:
-      consumes:
-      - application/json
-      description: Kullanıcı adı ve şifre ile giriş. Geçerli access token varsa aynı
-        token döner; yoksa yeni access+refresh üretilir.
-      parameters:
-      - description: Kullanıcı giriş bilgileri
-        in: body
-        name: body
-        required: true
-        schema:
-          properties:
-            password:
-              type: string
-            username:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Kullanıcı Adı ile Giriş
-      tags:
-      - Auth
-  /svc/auth/logout:
-    post:
-      description: Kullanıcının tüm refresh + access + CSRF tokenlarını siler (tam
-        çıkış).
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Logout
-      tags:
-      - Auth
-  /svc/auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: Geçerli refresh token ile yeni access token üretir
-      parameters:
-      - description: Refresh token
-        in: body
-        name: body
-        required: true
-        schema:
-          properties:
-            refresh_token:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Refresh Access Token
-      tags:
-      - Auth
-  /svc/auth/register:
-    post:
-      consumes:
-      - application/json
-      description: Yeni kullanıcı kaydı ve doğrulama e-postası gönderimi
-      parameters:
-      - description: Registration data
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/models.RegisterRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Register new user
-      tags:
-      - Auth
-  /svc/auth/request-password-reset:
-    post:
-      consumes:
-      - application/json
-      description: Aktif kullanıcı için şifre sıfırlama e-postası gönderir
-      parameters:
-      - description: Email
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/models.RequestPasswordReset'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Request password reset
-      tags:
-      - Auth
-  /svc/auth/reset-password:
-    post:
-      consumes:
-      - application/json
-      description: Token ile şifreyi sıfırlama
-      parameters:
-      - description: Token and new password
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/models.ResetPasswordTokenRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Reset password
-      tags:
-      - Auth
-  /svc/auth/send-verification/{userID}:
-    post:
-      description: Belirli kullanıcıya doğrulama e-postası gönderir
-      parameters:
-      - description: User ID
-        in: path
-        name: userID
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Send verification email
-      tags:
-      - Auth
-  /svc/auth/validate:
-    get:
-      description: JWT token geçerli mi kontrol eder, kullanıcı bilgisini döner.
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Token Doğrulama
-      tags:
-      - Auth
-  /svc/auth/verify-email/{token}:
-    post:
-      description: Verifies a user's email using a token
-      parameters:
-      - description: Verification token
-        in: path
-        name: token
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Verify email
-      tags:
-      - Auth
-  /svc/menus:
-    get:
-      description: Retrieve all menus, including frontend and backend menus
-      parameters:
-      - description: Bearer Token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Menu type (frontend or backend)
-        in: query
-        name: type
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of menus
-          schema:
-            items:
-              $ref: '#/definitions/models.Menu'
-            type: array
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to retrieve menus
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Get all menus
-      tags:
-      - Menus
-    post:
-      consumes:
-      - application/json
-      description: Add a new menu with its details
-      parameters:
-      - description: Bearer Token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Menu details
-        in: body
-        name: menu
-        required: true
-        schema:
-          $ref: '#/definitions/models.Menu'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Menu created successfully
-          schema:
-            $ref: '#/definitions/models.Menu'
-        "400":
-          description: Invalid request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to create menu
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Create a new menu
-      tags:
-      - Menus
-  /svc/menus/{id}:
-    delete:
-      description: Remove a menu by its unique identifier
-      parameters:
-      - description: Bearer Token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Menu ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "204":
-          description: No Content
-        "400":
-          description: Invalid menu ID
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Menu not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to delete menu
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Delete a menu
-      tags:
-      - Menus
-    put:
-      consumes:
-      - application/json
-      description: Update menu details by its ID
-      parameters:
-      - description: Bearer Token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Menu ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated menu details
-        in: body
-        name: menu
-        required: true
-        schema:
-          $ref: '#/definitions/models.Menu'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Menu updated successfully
-          schema:
-            $ref: '#/definitions/models.Menu'
-        "400":
-          description: Invalid request payload or menu ID
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Menu not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to update menu
-          schema:
-            additionalProperties: true
-            type: object
-      security:
-      - BearerAuth: []
-      summary: Update a menu
-      tags:
-      - Menus
-  /svc/permissions:
-    get:
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/models.Permission'
-            type: array
-      summary: Get all permission modules
-      tags:
-      - Permissions
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Permission module
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/models.Permission'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Create a permission module
-      tags:
-      - Permissions
-  /svc/permissions/{id}:
-    delete:
-      parameters:
-      - description: Permission ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses: {}
-      summary: Delete permission module
-      tags:
-      - Permissions
-    get:
-      parameters:
-      - description: Permission ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses: {}
-      summary: Get permission module by ID
-      tags:
-      - Permissions
-    put:
-      consumes:
-      - application/json
-      parameters:
-      - description: Permission ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated data
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/models.Permission'
-      produces:
-      - application/json
-      responses: {}
-      summary: Update permission module
-      tags:
-      - Permissions
-  /svc/roles:
-    get:
-      description: Retrieve all roles with their permissions and details
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of roles
-          schema:
-            items:
-              $ref: '#/definitions/models.Role'
-            type: array
-        "500":
-          description: Failed to retrieve roles
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get all roles
-      tags:
-      - Roles
-    post:
-      consumes:
-      - application/json
-      description: Add a new role with its permissions and details
-      parameters:
-      - description: Role details
-        in: body
-        name: role
-        required: true
-        schema:
-          $ref: '#/definitions/models.Role'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Role created successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to create role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Create a new role
-      tags:
-      - Roles
-  /svc/roles/{id}:
-    delete:
-      description: Remove a role by its unique identifier
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: Role deleted successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid role ID
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Role not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to delete role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Delete a role
-      tags:
-      - Roles
-    get:
-      description: Retrieve a role with its permissions and details by its unique
-        identifier
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Role details
-          schema:
-            $ref: '#/definitions/models.Role'
-        "400":
-          description: Invalid role ID
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Role not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to retrieve role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get a role by ID
-      tags:
-      - Roles
-    put:
-      consumes:
-      - application/json
-      description: Update role details, including permissions
-      parameters:
-      - description: Role ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Updated role details
-        in: body
-        name: role
-        required: true
-        schema:
-          $ref: '#/definitions/models.Role'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Role updated successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid role ID or request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties: true
-            type: object
-        "404":
-          description: Role not found
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to update role
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Update a role
-      tags:
-      - Roles
-  /svc/settings:
-    get:
-      description: Retrieve all application settings including general settings and
-        configurations
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Application settings
-          schema:
-            $ref: '#/definitions/models.ApplicationSettings'
-        "500":
-          description: Failed to retrieve settings
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get application settings
-      tags:
-      - Settings
-    put:
-      consumes:
-      - application/json
-      description: Update application settings with new values
-      parameters:
-      - description: Updated settings data
-        in: body
-        name: update
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Settings updated successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to update settings
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Update application settings
-      tags:
-      - Settings
-  /svc/settings/social-media:
-    get:
-      description: Retrieve all social media links configured for the application
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of social media links
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to retrieve social media links
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Get social media links
-      tags:
-      - Social Media
-    put:
-      consumes:
-      - application/json
-      description: Update the social media links for the application
-      parameters:
-      - description: Updated social media links
-        in: body
-        name: links
-        required: true
-        schema:
-          additionalProperties:
-            $ref: '#/definitions/models.SocialMedia'
-          type: object
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Social media links updated successfully
-          schema:
-            additionalProperties: true
-            type: object
-        "400":
-          description: Invalid request payload
-          schema:
-            additionalProperties: true
-            type: object
-        "500":
-          description: Failed to update social media links
-          schema:
-            additionalProperties: true
-            type: object
-      summary: Update social media links
-      tags:
-      - Social Media
   /tags:
     get:
       description: Retrieve all tags with their details
@@ -3292,6 +3240,39 @@ paths:
       summary: Delete a user
       tags:
       - Users
+    get:
+      description: Retrieve a single user document by its ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User data
+          schema:
+            $ref: '#/definitions/models.User'
+        "400":
+          description: Invalid user ID
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get user by ID
+      tags:
+      - Users
     put:
       consumes:
       - application/json
@@ -3333,6 +3314,130 @@ paths:
             additionalProperties: true
             type: object
       summary: Update a user
+      tags:
+      - Users
+  /users/{id}/approve:
+    patch:
+      description: Approve a user's account after email verification (Admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User approved successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid ID or unverified email
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Approve a user
+      tags:
+      - Users
+  /users/{id}/roles:
+    get:
+      description: Returns all roles assigned to a specific user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get roles of a specific user
+      tags:
+      - Users
+    patch:
+      consumes:
+      - application/json
+      description: Update a user's roles by ID (Admin only)
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: List of role IDs
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            roles:
+              items:
+                type: string
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Roles updated successfully
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Invalid request body or user ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Failed to update roles
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Assign roles to a user
       tags:
       - Users
   /users/language:

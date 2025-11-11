@@ -9,14 +9,43 @@ import (
 
 func ContactRoutes(router *gin.Engine) {
 	contacts := router.Group("/contact")
+
+	// Genel middleware'ler
 	contacts.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
-	contacts.Use(middlewares.AuthMiddleware())
-	contacts.Use(middlewares.AuthorizeRolesMiddleware("admin"))
+	contacts.Use(middlewares.AuthMiddleware())        // JWT kimlik doğrulama
+
 	{
-		contacts.POST("/", middlewares.CSRFMiddleware(), controllers.CreateContactMessageHandler)
-		contacts.GET("/", controllers.GetAllContactMessagesHandler)
-		contacts.PUT("/:id", middlewares.CSRFMiddleware(), controllers.UpdateContactMessageStatusHandler)
-		contacts.GET("/:id", controllers.GetContactByIDHandler)
-		contacts.DELETE("/:id", middlewares.CSRFMiddleware(), controllers.DeleteContactMessageHandler)
+		// 🟢 Yeni ileti oluşturma (kullanıcı form gönderir)
+		contacts.POST("/",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("contacts", "create"),
+			controllers.CreateContactMessageHandler,
+		)
+
+		// 🔵 Tüm iletileri listeleme (sadece yetkili kullanıcılar)
+		contacts.GET("/",
+			middlewares.AuthorizePermissionMiddleware("contacts", "read"),
+			controllers.GetAllContactMessagesHandler,
+		)
+
+		// 🟣 Tek ileti görüntüleme
+		contacts.GET("/:id",
+			middlewares.AuthorizePermissionMiddleware("contacts", "read"),
+			controllers.GetContactByIDHandler,
+		)
+
+		// 🟡 İleti durumunu güncelleme
+		contacts.PUT("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("contacts", "update"),
+			controllers.UpdateContactMessageStatusHandler,
+		)
+
+		// 🔴 İleti silme
+		contacts.DELETE("/:id",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("contacts", "delete"),
+			controllers.DeleteContactMessageHandler,
+		)
 	}
 }

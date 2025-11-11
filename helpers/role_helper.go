@@ -3,6 +3,8 @@ package helpers
 import (
 	"admin-panel/services"
 	"context"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // HasModulePermission verilen rolün belirtilen module/action için yetkisini kontrol eder.
@@ -31,4 +33,20 @@ func HasModulePermission(ctx context.Context, roleName, module, action string) (
 		}
 	}
 	return false, nil
+}
+
+// NormalizeRoles converts mixed-type roles (string/ObjectID/interface{}) into []string
+func NormalizeRoles(roles []interface{}) []string {
+	var normalized []string
+	for _, r := range roles {
+		switch v := r.(type) {
+		case string:
+			normalized = append(normalized, v)
+		case primitive.ObjectID:
+			normalized = append(normalized, v.Hex())
+		default:
+			continue
+		}
+	}
+	return normalized
 }

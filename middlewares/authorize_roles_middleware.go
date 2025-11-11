@@ -1,97 +1,86 @@
 package middlewares
 
 import (
-	"admin-panel/helpers"
+	"admin-panel/services"
+	"context"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// AuthorizeRolesMiddleware — belirli rollerin erişimine izin verir.
-// Örnek: router.Use(AuthorizeRolesMiddleware("admin", "editor"))
-func AuthorizeRolesMiddleware(allowedRoles ...string) gin.HandlerFunc {
+// AuthorizePermissionMiddleware kontrolü:
+// Örnek kullanım → AuthorizePermissionMiddleware("categories", "create")
+func AuthorizePermissionMiddleware(module, action string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		rolesVal, exists := c.Get("roles") // AuthMiddleware tarafından konulmuş olmalı
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized - no roles found"})
-			c.Abort()
+		// 1️⃣ Token'dan kullanıcı ID'sini al
+		userID := c.GetString("user_id")
+		if userID == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
 
-		// roller string veya []string olabilir; ikisini de destekle
-		var userRoles []string
-		switch v := rolesVal.(type) {
-		case []string:
-			userRoles = v
-		case string:
-			if v != "" {
-				userRoles = []string{v}
-			}
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid roles format"})
-			c.Abort()
+		// 2️⃣ Kullanıcıyı bul
+		ctx := context.TODO()
+		user, err := services.GetUserByID(ctx, userID)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "user not found"})
 			return
 		}
 
-		// Kullanıcı rollerinden biri izin verilenler arasında mı?
-		for _, userRole := range userRoles {
-			for _, allowed := range allowedRoles {
-				if userRole == allowed {
-					c.Next()
-					return
+		// 3️⃣ Kullanıcının rollerini kontrol et
+		if len(user.Roles) == 0 {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "no roles assigned"})
+			return
+		}
+
+		// 4️⃣ Rollerden izinleri topla
+		roles, err := services.GetRolesByIDs(ctx, user.Roles)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch roles"})
+			return
+		}
+
+		var permissionIDs []primitive.ObjectID
+		for _, role := range roles {
+			permissionIDs = append(permissionIDs, role.Permissions...)
+		}
+
+		// 5️⃣ İzin belgelerini çek
+		perms, err := services.GetPermissionsByIDs(ctx, permissionIDs)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch permissions"})
+			return
+		}
+
+		// 6️⃣ İstenen module/action izni var mı?
+		allowed := false
+		for _, p := range perms {
+			if strings.EqualFold(p.Module, module) {
+				for _, act := range p.Actions {
+					if strings.EqualFold(act, action) {
+						allowed = true
+						break
+					}
 				}
 			}
+			if allowed {
+				break
+			}
 		}
 
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Access denied",
-			"roles": userRoles,
-		})
-		c.Abort()
-	}
-}
-
-// ModulePermissionMiddleware — belirli modül ve aksiyona göre izin kontrolü.
-// Örnek: router.Use(ModulePermissionMiddleware("posts", "delete"))
-func ModulePermissionMiddleware(module string, action string) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		rolesVal, exists := c.Get("roles")
-		if !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-			c.Abort()
+		if !allowed {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
+				"error":   "permission denied",
+				"module":  module,
+				"action":  action,
+				"message": "you do not have access to perform this action",
+			})
 			return
 		}
 
-		// roller string veya []string olabilir; ikisini de destekle
-		var userRoles []string
-		switch v := rolesVal.(type) {
-		case []string:
-			userRoles = v
-		case string:
-			if v != "" {
-				userRoles = []string{v}
-			}
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid roles format"})
-			c.Abort()
-			return
-		}
-
-		// Roller bazında izinleri kontrol et — ilk yetkide geçir
-		for _, role := range userRoles {
-			ok, err := helpers.HasModulePermission(c.Request.Context(), role, module, action)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check permissions"})
-				c.Abort()
-				return
-			}
-			if ok {
-				c.Next()
-				return
-			}
-		}
-
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
-		c.Abort()
+		// 7️⃣ Devam et
+		c.Next()
 	}
 }

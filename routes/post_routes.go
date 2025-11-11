@@ -8,18 +8,44 @@ import (
 )
 
 func PostRoutes(router *gin.Engine) {
-	posts := router.Group("/admin/posts")
-	posts.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
-	posts.Use(middlewares.AuthMiddleware())
-	posts.Use(middlewares.AuthorizeRolesMiddleware("admin", "editor"))
-	posts.Use(middlewares.LanguageMiddleware()) // Dil middleware’i ekle
-	{
-		posts.POST("/create", middlewares.CSRFMiddleware(), middlewares.ModulePermissionMiddleware("posts", "create"), middlewares.ActivityLogMiddleware("posts", "create"), controllers.CreatePostHandler)
-		posts.GET("/", middlewares.ModulePermissionMiddleware("posts", "read"), controllers.GetAllPostsHandler)
-		posts.GET("/filter", controllers.GetFilteredPostsHandler)       // Filtrelenmiş postlar
-		posts.GET("/lang/:lang", controllers.GetPostsByLanguageHandler) // Dil bazlı içerik listeleme
-		// Yeni rota: Dil ve slug üzerinden post getirme
-		posts.GET("/:lang/:slug", controllers.GetPostByLangAndSlugHandler)
+	posts := router.Group("/posts")
 
+	// 🧩 Ortak güvenlik ve sistem kontrolleri
+	posts.Use(middlewares.MaintenanceMiddleware()) // Bakım modu kontrolü
+	posts.Use(middlewares.AuthMiddleware())        // JWT doğrulama
+	posts.Use(middlewares.LanguageMiddleware())    // Dil middleware’i
+
+	{
+		// 🟢 Post oluşturma
+		posts.POST("/create",
+			middlewares.CSRFMiddleware(),
+			middlewares.AuthorizePermissionMiddleware("posts", "create"),
+			middlewares.ActivityLogMiddleware("posts", "create"),
+			controllers.CreatePostHandler,
+		)
+
+		// 🔵 Tüm postları listeleme
+		posts.GET("/",
+			middlewares.AuthorizePermissionMiddleware("posts", "read"),
+			controllers.GetAllPostsHandler,
+		)
+
+		// 🟣 Filtreli listeleme (örneğin kategoriye göre)
+		posts.GET("/filter",
+			middlewares.AuthorizePermissionMiddleware("posts", "read"),
+			controllers.GetFilteredPostsHandler,
+		)
+
+		// 🌐 Dil bazlı içerik listeleme
+		posts.GET("/lang/:lang",
+			middlewares.AuthorizePermissionMiddleware("posts", "read"),
+			controllers.GetPostsByLanguageHandler,
+		)
+
+		// 🔍 Dil + slug üzerinden içerik getirme (örneğin /tr/slug)
+		posts.GET("/:lang/:slug",
+			middlewares.AuthorizePermissionMiddleware("posts", "read"),
+			controllers.GetPostByLangAndSlugHandler,
+		)
 	}
 }
